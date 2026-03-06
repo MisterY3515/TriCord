@@ -104,7 +104,7 @@ time_t snowflakeToTimestamp(const std::string &snowflake) {
 
 std::string formatTimestamp(const std::string &timestamp) {
   if (timestamp == "Sending...")
-    return TR("message.sending");
+    return TR("message.status.sending");
   if (timestamp == "Failed")
     return TR("message.status.failed");
   time_t msg_utc = parseISO8601(timestamp);
