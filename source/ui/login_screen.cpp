@@ -196,10 +196,11 @@ void LoginScreen::update() {
       if (touch.px >= fieldX && touch.px <= fieldX + fieldW &&
           touch.py >= emailY && touch.py <= emailY + 30) {
         SwkbdState swkbd;
-        swkbdInit(&swkbd, SWKBD_TYPE_QWERTY, 2, -1);
+        swkbdInit(&swkbd, SWKBD_TYPE_WESTERN, 2, -1);
         swkbdSetHintText(&swkbd, TR("login.swkbd.email").c_str());
         swkbdSetInitialText(&swkbd, email.c_str());
-        swkbdSetFeatures(&swkbd, SWKBD_DARKEN_TOP_SCREEN);
+        swkbdSetFeatures(&swkbd,
+                         SWKBD_DARKEN_TOP_SCREEN | SWKBD_DEFAULT_QWERTY);
         char buf[256];
         if (swkbdInputText(&swkbd, buf, sizeof(buf)) == SWKBD_BUTTON_CONFIRM) {
           email = buf;
@@ -209,9 +210,10 @@ void LoginScreen::update() {
       if (touch.px >= fieldX && touch.px <= fieldX + fieldW &&
           touch.py >= passY && touch.py <= passY + 30) {
         SwkbdState swkbd;
-        swkbdInit(&swkbd, SWKBD_TYPE_QWERTY, 2, -1);
+        swkbdInit(&swkbd, SWKBD_TYPE_WESTERN, 2, -1);
         swkbdSetHintText(&swkbd, TR("login.swkbd.password").c_str());
-        swkbdSetFeatures(&swkbd, SWKBD_DARKEN_TOP_SCREEN);
+        swkbdSetFeatures(&swkbd,
+                         SWKBD_DARKEN_TOP_SCREEN | SWKBD_DEFAULT_QWERTY);
         swkbdSetPasswordMode(&swkbd, SWKBD_PASSWORD_HIDE_DELAY);
         char buf[256];
         if (swkbdInputText(&swkbd, buf, sizeof(buf)) == SWKBD_BUTTON_CONFIRM) {
