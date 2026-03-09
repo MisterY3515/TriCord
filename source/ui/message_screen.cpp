@@ -901,7 +901,7 @@ float MessageScreen::drawForumMessage(const Discord::Message &msg, float y,
   if (isSelected) {
     C2D_DrawRectSolid(0.0f, drawY, 0.5f, 400.0f, cardH, bgColor);
     C2D_DrawRectSolid(0.0f, drawY, 0.5f, 4.0f, cardH,
-                      ScreenManager::colorPrimary());
+                      ScreenManager::colorAccent());
     C2D_DrawRectSolid(10.0f, drawY + cardH - 1.0f, 0.5f, 380.0f, 1.0f,
                       C2D_Color32(60, 60, 70, 255));
   }

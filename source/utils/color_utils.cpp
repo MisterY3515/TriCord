@@ -11,11 +11,11 @@ u32 hexToColor(const std::string &hex) {
   if (s.length() < 6)
     return 0;
 
-  unsigned int r, g, b, a = 255;
+  unsigned int r = 0, g = 0, b = 0, a = 255;
   if (s.length() >= 8) {
-    sscanf(s.c_str(), "%02x%02x%02x%02x", &r, &g, &b, &a);
+    sscanf(s.c_str(), "%2x%2x%2x%2x", &r, &g, &b, &a);
   } else {
-    sscanf(s.c_str(), "%02x%02x%02x", &r, &g, &b);
+    sscanf(s.c_str(), "%2x%2x%2x", &r, &g, &b);
   }
   return C2D_Color32(r, g, b, a);
 }

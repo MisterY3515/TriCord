@@ -15,6 +15,7 @@
 #include "ui/server_list_screen.h"
 #include "ui/settings_screen.h"
 #include "ui/text_measure_cache.h"
+#include "ui/theme_manager_screen.h"
 #include "utils/message_utils.h"
 #include "utils/utf8_utils.h"
 #include <cmath>
@@ -167,6 +168,9 @@ void ScreenManager::setScreen(ScreenType type) {
     break;
   case ScreenType::DISCLAIMER:
     currentScreen = std::make_unique<DisclaimerScreen>();
+    break;
+  case ScreenType::THEME_MANAGER:
+    currentScreen = std::make_unique<ThemeManagerScreen>();
     break;
   }
 
@@ -389,7 +393,8 @@ void ScreenManager::drawToast() {
 
   u32 bg = C2D_Color32(40, 40, 45, 235);
   drawRoundedRect(x, y, z, w, h, 8.0f, bg);
-  drawRoundedRect(x + 4, y + h - 2.0f, z + 0.01f, w - 8.0f, 1.5f, 0.75f,
+  float progressW = (w - 8.0f) * (toastTimer / 120.0f);
+  drawRoundedRect(x + 4, y + h - 2.0f, z + 0.01f, progressW, 1.5f, 0.75f,
                   colorSelection());
 
   C2D_SceneBegin(bottomTarget);
@@ -461,15 +466,27 @@ void drawRoundedRect(float x, float y, float z, float w, float h, float radius,
   if (radius > h / 2)
     radius = h / 2;
 
-  C2D_DrawRectSolid(x, y + radius, z, w, h - 2 * radius, color);
-  C2D_DrawRectSolid(x + radius, y, z, w - 2 * radius, radius, color);
-  C2D_DrawRectSolid(x + radius, y + h - radius, z, w - 2 * radius, radius,
+  C2D_DrawRectSolid(x + radius, y, z, w - 2 * radius, h, color);
+  C2D_DrawRectSolid(x, y + radius, z, radius, h - 2 * radius, color);
+  C2D_DrawRectSolid(x + w - radius, y + radius, z, radius, h - 2 * radius,
                     color);
 
-  C2D_DrawCircleSolid(x + radius, y + radius, z, radius, color);
-  C2D_DrawCircleSolid(x + w - radius, y + radius, z, radius, color);
-  C2D_DrawCircleSolid(x + radius, y + h - radius, z, radius, color);
-  C2D_DrawCircleSolid(x + w - radius, y + h - radius, z, radius, color);
+  auto drawCorner = [&](float cx, float cy, float startAngle) {
+    const int segments = 8;
+    const float step = (M_PI / 2.0f) / segments;
+    for (int i = 0; i < segments; i++) {
+      float a1 = startAngle + i * step;
+      float a2 = startAngle + (i + 1) * step;
+      C2D_DrawTriangle(cx, cy, color, cx + radius * cos(a1),
+                       cy + radius * sin(a1), color, cx + radius * cos(a2),
+                       cy + radius * sin(a2), color, z);
+    }
+  };
+
+  drawCorner(x + radius, y + radius, M_PI);
+  drawCorner(x + w - radius, y + radius, 3 * M_PI / 2);
+  drawCorner(x + w - radius, y + h - radius, 0);
+  drawCorner(x + radius, y + h - radius, M_PI / 2);
 }
 
 void drawCircle(float x, float y, float z, float radius, u32 color) {
@@ -856,20 +873,20 @@ float measureRichTextUnicodeOnly(const std::string &rawText, float scaleX,
 }
 
 u32 ScreenManager::colorBackground() {
-  return Config::getInstance().getTheme().background;
+  return Config::getInstance().getTheme().bg;
 }
 u32 ScreenManager::colorBackgroundDark() {
-  return Config::getInstance().getTheme().backgroundDark;
+  return Config::getInstance().getTheme().bg_dark;
 }
 u32 ScreenManager::colorBackgroundLight() {
-  return Config::getInstance().getTheme().backgroundLight;
+  return Config::getInstance().getTheme().bg_light;
 }
-u32 ScreenManager::colorPrimary() {
-  return Config::getInstance().getTheme().primary;
+u32 ScreenManager::colorAccent() {
+  return Config::getInstance().getTheme().accent;
 }
 u32 ScreenManager::colorText() { return Config::getInstance().getTheme().text; }
 u32 ScreenManager::colorTextMuted() {
-  return Config::getInstance().getTheme().textMuted;
+  return Config::getInstance().getTheme().text_muted;
 }
 u32 ScreenManager::colorSuccess() {
   return Config::getInstance().getTheme().success;
@@ -879,7 +896,7 @@ u32 ScreenManager::colorError() {
 }
 
 u32 ScreenManager::colorInput() {
-  return Config::getInstance().getTheme().input;
+  return Config::getInstance().getTheme().input_bg;
 }
 u32 ScreenManager::colorBoost() {
   return Config::getInstance().getTheme().boost;
@@ -899,7 +916,7 @@ u32 ScreenManager::colorHeaderGlass() {
 }
 
 u32 ScreenManager::colorHeaderBorder() {
-  return Config::getInstance().getTheme().headerBorder;
+  return Config::getInstance().getTheme().header_border;
 }
 
 u32 ScreenManager::colorSelection() {
@@ -911,23 +928,23 @@ u32 ScreenManager::colorOverlay() {
 }
 
 u32 ScreenManager::colorWhite() {
-  return Config::getInstance().getTheme().white;
+  return Config::getInstance().getTheme().pure_white;
 }
 
 u32 ScreenManager::colorEmbed() {
-  return Config::getInstance().getTheme().embed;
+  return Config::getInstance().getTheme().embed_bg;
 }
 
 u32 ScreenManager::colorEmbedMedia() {
-  return Config::getInstance().getTheme().embedMedia;
+  return Config::getInstance().getTheme().embed_media_bg;
 }
 
 u32 ScreenManager::colorReaction() {
-  return Config::getInstance().getTheme().reaction;
+  return Config::getInstance().getTheme().reaction_bg;
 }
 
 u32 ScreenManager::colorReactionMe() {
-  return Config::getInstance().getTheme().reactionMe;
+  return Config::getInstance().getTheme().reaction_me_bg;
 }
 
 void ScreenManager::resetSelection() {

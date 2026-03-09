@@ -59,7 +59,7 @@ private:
                  const std::string &body = "",
                  const std::map<std::string, std::string> &extraHeaders = {});
   void setupCurl(const std::string &url);
-  void setupHeaders(struct curl_slist **headers,
+  void setupHeaders(const std::string &url, struct curl_slist **headers,
                     const std::map<std::string, std::string> &extraHeaders);
 
   static size_t writeCallback(void *contents, size_t size, size_t nmemb,

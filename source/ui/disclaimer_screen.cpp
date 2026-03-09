@@ -49,7 +49,7 @@ void DisclaimerScreen::renderTop(C3D_RenderTarget *target) {
 
   float lineW = 80.0f;
   C2D_DrawRectSolid(centerX - lineW / 2, 48.0f, 0.5f, lineW, 2.0f,
-                    ScreenManager::colorPrimary());
+                    ScreenManager::colorAccent());
 
   std::vector<std::string> lines =
       MessageUtils::wrapText(DISCLAIMER_TEXT, 360.0f, 0.45f);

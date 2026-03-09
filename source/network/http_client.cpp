@@ -213,13 +213,19 @@ size_t HttpClient::headerCallback(char *buffer, size_t size, size_t nitems,
 }
 
 void HttpClient::setupHeaders(
-    struct curl_slist **headers,
+    const std::string &url, struct curl_slist **headers,
     const std::map<std::string, std::string> &extraHeaders) {
 
   *headers = nullptr;
 
+  bool isDiscord = (url.find("discord.com") != std::string::npos);
+
   for (const auto &pair : defaultHeaders) {
     if (extraHeaders.find(pair.first) == extraHeaders.end()) {
+      if (!isDiscord && (pair.first == "X-Super-Properties" ||
+                         pair.first == "X-Discord-Locale")) {
+        continue;
+      }
       std::string headerStr = pair.first + ": " + pair.second;
       *headers = curl_slist_append(*headers, headerStr.c_str());
     }
@@ -267,7 +273,7 @@ HttpResponse HttpClient::performRequest(
   }
 
   struct curl_slist *headerList = nullptr;
-  setupHeaders(&headerList, extraHeaders);
+  setupHeaders(url, &headerList, extraHeaders);
 
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeCallback);
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response.body);

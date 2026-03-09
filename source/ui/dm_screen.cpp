@@ -158,7 +158,7 @@ void DmScreen::renderBottom(C3D_RenderTarget *target) {
       dispNameBottom += "...";
     }
 
-    drawRichText(10.0f, 40.0f, 0.5f, 0.6f, 0.6f, ScreenManager::colorPrimary(),
+    drawRichText(10.0f, 40.0f, 0.5f, 0.6f, 0.6f, ScreenManager::colorAccent(),
                  dispNameBottom);
   }
 

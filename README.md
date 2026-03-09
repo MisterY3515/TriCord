@@ -26,7 +26,11 @@ This software is provided **"as is"**, and you use it at your own risk. The use 
 - Text messaging with emoji, attachments, embeds, reactions, and replies
 - Multi-account support
 - Server, channel, and forum thread navigation
-- Customizable themes and internationalization (EN/JA)
+- Customizable [themes](THEME_FORMAT.md) and internationalization (EN/JA)
+
+## Custom Themes
+TriCord supports custom themes. You can create your own theme by following the **[Theme Format Specification](THEME_FORMAT.md)**.
+Check out the [TriCord-Themes](https://github.com/2b-zipper/TriCord-Themes) repository for sample themes.
 
 ## Installation
 1. Download the latest release (CIA or 3DSX)

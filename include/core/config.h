@@ -31,27 +31,33 @@
 #include <vector>
 
 struct Theme {
-  u32 background;
-  u32 backgroundDark;
-  u32 backgroundLight;
-  u32 primary;
+  u32 bg;
+  u32 bg_dark;
+  u32 bg_light;
+  u32 accent;
+  u32 selection;
+  u32 separator;
+  u32 header_border;
+  u32 overlay;
+  u32 pure_white;
+
   u32 text;
-  u32 textMuted;
+  u32 text_muted;
+  u32 link;
+
+  u32 embed_bg;
+  u32 embed_media_bg;
+  u32 reaction_bg;
+  u32 reaction_me_bg;
+  u32 input_bg;
+  u32 boost;
+
   u32 success;
   u32 error;
-  u32 embed;
-  u32 embedMedia;
-  u32 reaction;
-  u32 reactionMe;
-  u32 input;
-  u32 boost;
-  u32 link;
-  u32 separator;
-  u32 headerBorder;
-  u32 selection;
-  u32 overlay;
-  u32 white;
+
   std::string name;
+  std::string author;
+  std::string description;
 };
 
 class Config {
@@ -99,6 +105,13 @@ public:
     customTheme = theme;
     saveTheme();
   }
+
+  bool isCustomThemeEnabled() const { return customThemeEnabled; }
+  void setCustomThemeEnabled(bool enabled);
+
+  std::string getSelectedThemeName() const { return selectedThemeName; }
+  void setSelectedThemeName(const std::string &name);
+
   int getThemeType() const { return themeType; }
   void setThemeType(int type);
   bool isTypingIndicatorEnabled() const { return typingIndicatorEnabled; }
@@ -115,6 +128,10 @@ public:
   void loadTheme();
   void saveTheme();
 
+  std::vector<std::string> getAvailableThemes();
+  bool loadThemeFromFile(const std::string &name);
+  void deleteTheme(const std::string &name);
+
 private:
   Config();
   std::vector<Account> accounts;
@@ -126,6 +143,9 @@ private:
   bool fileLoggingEnabled;
   bool disclaimerAccepted;
   bool sslVerificationDisabled;
+
+  bool customThemeEnabled;
+  std::string selectedThemeName;
   Theme customTheme;
 
   mutable std::recursive_mutex mutex;

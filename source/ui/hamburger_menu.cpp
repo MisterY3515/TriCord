@@ -334,7 +334,11 @@ void HamburgerMenu::render() {
                         isSelected, selCol);
 
       if (isSelected) {
-        color = ScreenManager::colorWhite();
+        if (i < (int)accounts.size()) {
+          color = ScreenManager::colorWhite();
+        } else {
+          color = ScreenManager::colorBackgroundDark();
+        }
       }
 
       if (i < (int)accounts.size()) {
@@ -379,16 +383,17 @@ void HamburgerMenu::render() {
 
     std::string confirmMsg =
         Core::I18n::format(TR("menu.delete_confirm"), accName);
-    drawText(cx + 10, cy + 12.0f, 0.997f, 0.5f, 0.5f,
-             ScreenManager::colorText(), confirmMsg);
+    drawCenteredText(cy + 12.0f, 0.997f, 0.5f, 0.5f, ScreenManager::colorText(),
+                     confirmMsg, 400.0f);
 
-    drawText(cx + 10, cy + 42.0f, 0.997f, 0.45f, 0.45f,
-             ScreenManager::colorTextMuted(), TR("menu.delete_warning"));
+    drawCenteredText(cy + 42.0f, 0.997f, 0.45f, 0.45f,
+                     ScreenManager::colorTextMuted(), TR("menu.delete_warning"),
+                     400.0f);
 
-    drawText(cx + 10, cy + ch - 22.0f, 0.997f, 0.4f, 0.4f,
-             ScreenManager::colorError(),
-             "\uE000: " + TR("common.delete") +
-                 "  \uE001: " + TR("common.cancel"));
+    std::string help =
+        "\uE000: " + TR("common.delete") + "  \uE001: " + TR("common.cancel");
+    drawCenteredText(cy + ch - 22.0f, 0.997f, 0.4f, 0.4f,
+                     ScreenManager::colorError(), help, 400.0f);
   } else if (state == State::STATUS_SELECTION) {
     float popupW = 200.0f;
     float popupH = 142.0f;

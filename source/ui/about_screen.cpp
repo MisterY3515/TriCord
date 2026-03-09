@@ -104,7 +104,7 @@ void AboutScreen::renderTop(C3D_RenderTarget *target) {
 
   float lineW = 100.0f;
   C2D_DrawRectSolid(centerX - lineW / 2, centerY + 25.0f, 0.5f, lineW, 2.0f,
-                    ScreenManager::colorPrimary());
+                    ScreenManager::colorAccent());
 }
 
 void AboutScreen::renderBottom(C3D_RenderTarget *target) {

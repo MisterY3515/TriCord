@@ -4,6 +4,7 @@
 #include <citro2d.h>
 #include <cstdio>
 #include <cstring>
+#include <dirent.h>
 #include <mutex>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -22,7 +23,8 @@
 Config::Config()
     : currentAccountIndex(-1), timezoneOffset(0), language("en"), themeType(0),
       typingIndicatorEnabled(true), fileLoggingEnabled(false),
-      disclaimerAccepted(false), sslVerificationDisabled(false) {
+      disclaimerAccepted(false), sslVerificationDisabled(false),
+      customThemeEnabled(false), selectedThemeName("") {
   customTheme = getDarkPreset();
   customTheme.name = "Custom Theme";
 }
@@ -30,56 +32,67 @@ Config::Config()
 Theme Config::getDarkPreset() {
   Theme t;
   t.name = "Dark Mode";
-  t.background = 0xFF383331;
-  t.backgroundDark = 0xFF312D2B;
-  t.backgroundLight = 0xFF494240;
-  t.primary = 0xFFF26558;
+  t.author = "TriCord Team";
+  t.bg = 0xFF383331;
+  t.bg_dark = 0xFF312D2B;
+  t.bg_light = 0xFF494240;
+  t.accent = 0xFFF26558;
+  t.selection = 0xFFF26558;
+  t.separator = 0xFFA49B94;
+  t.header_border = 0x1EFFFFFF;
+  t.overlay = 0x96000000;
+  t.pure_white = 0xFFFFFFFF;
+
   t.text = 0xFFFFFFFF;
-  t.textMuted = 0xFFA49B94;
+  t.text_muted = 0xFFA49B94;
+  t.link = 0xFFFEBA49;
+
+  t.embed_bg = 0xFF312D2B;
+  t.embed_media_bg = 0xFF383331;
+  t.reaction_bg = 0xFF494240;
+  t.reaction_me_bg = 0xFF8B6447;
+  t.input_bg = 0xFF252220;
+  t.boost = 0xFFF273FF;
+
   t.success = 0xFF6DB143;
   t.error = 0xFF4D47F0;
-  t.embed = 0xFF312D2B;
-  t.embedMedia = 0xFF383331;
-  t.reaction = 0xFF494240;
-  t.reactionMe = 0xFF8B6447;
-  t.input = 0xFF252220;
-  t.boost = 0xFFF273FF;
-  t.link = 0xFFFEBA49;
-  t.separator = 0xFFA49B94;
-  t.headerBorder = 0x1EFFFFFF;
-  t.selection = 0xFFF26558;
-  t.overlay = 0x96000000;
-  t.white = 0xFFFFFFFF;
   return t;
 }
 
 Theme Config::getLightPreset() {
   Theme t;
   t.name = "Light Mode";
-  t.background = 0xFFFFFFFF;
-  t.backgroundDark = 0xFFF5F3F2;
-  t.backgroundLight = 0xFFE5E2E0;
-  t.primary = 0xFFF26558;
+  t.author = "TriCord Team";
+  t.bg = 0xFFFFFFFF;
+  t.bg_dark = 0xFFF5F3F2;
+  t.bg_light = 0xFFE5E2E0;
+  t.accent = 0xFFF26558;
+  t.selection = 0xFFF26558;
+  t.separator = 0xFF58504E;
+  t.header_border = 0x1EFFFFFF;
+  t.overlay = 0x96000000;
+  t.pure_white = 0xFFFFFFFF;
+
   t.text = 0xFF070606;
-  t.textMuted = 0xFF58504E;
+  t.text_muted = 0xFF58504E;
+  t.link = 0xFFFEBA49;
+
+  t.embed_bg = 0xFFFBFBFB;
+  t.embed_media_bg = 0xFFF5F3F2;
+  t.reaction_bg = 0xFFE0E2E5;
+  t.reaction_me_bg = 0xFFFAEAED;
+  t.input_bg = 0xFFE5E2E0;
+  t.boost = 0xFFF273FF;
+
   t.success = 0xFF6DB143;
   t.error = 0xFF4D47F0;
-  t.embed = 0xFFFBFBFB;
-  t.embedMedia = 0xFFF5F3F2;
-  t.reaction = 0xFFE0E2E5;
-  t.reactionMe = 0xFFFAEAED;
-  t.input = 0xFFE5E2E0;
-  t.boost = 0xFFF273FF;
-  t.link = 0xFFFEBA49;
-  t.separator = 0xFF58504E;
-  t.headerBorder = 0x1EFFFFFF;
-  t.selection = 0xFFF26558;
-  t.overlay = 0x96000000;
-  t.white = 0xFFFFFFFF;
   return t;
 }
 
 const Theme &Config::getTheme() const {
+  if (customThemeEnabled) {
+    return customTheme;
+  }
   if (themeType == 0) {
     static Theme dark = getDarkPreset();
     return dark;
@@ -107,6 +120,11 @@ void Config::load() {
   struct stat st = {0};
   if (stat(CONFIG_DIR_PATH, &st) == -1) {
     mkdir(CONFIG_DIR_PATH, 0700);
+  }
+
+  std::string themesPath = std::string(CONFIG_DIR_PATH) + "/themes";
+  if (stat(themesPath.c_str(), &st) == -1) {
+    mkdir(themesPath.c_str(), 0700);
   }
 
   std::string accountsPath = std::string(CONFIG_DIR_PATH) + "/accounts";
@@ -216,6 +234,14 @@ void Config::loadSettings() {
           doc["ssl_verification_disabled"].IsBool()) {
         sslVerificationDisabled = doc["ssl_verification_disabled"].GetBool();
       }
+      if (doc.HasMember("custom_theme_enabled") &&
+          doc["custom_theme_enabled"].IsBool()) {
+        customThemeEnabled = doc["custom_theme_enabled"].GetBool();
+      }
+      if (doc.HasMember("selected_theme_name") &&
+          doc["selected_theme_name"].IsString()) {
+        selectedThemeName = doc["selected_theme_name"].GetString();
+      }
     } else {
       saveSettings();
     }
@@ -246,6 +272,10 @@ void Config::saveSettings() {
   writer.Bool(disclaimerAccepted);
   writer.Key("ssl_verification_disabled");
   writer.Bool(sslVerificationDisabled);
+  writer.Key("custom_theme_enabled");
+  writer.Bool(customThemeEnabled);
+  writer.Key("selected_theme_name");
+  writer.String(selectedThemeName.c_str());
   writer.EndObject();
 
   std::string settingsPath = std::string(CONFIG_DIR_PATH) + "/settings.json";
@@ -275,6 +305,9 @@ void Config::setTimezoneOffset(int offset) {
 
 void Config::setThemeType(int type) {
   themeType = type;
+  if (customThemeEnabled && !selectedThemeName.empty()) {
+    loadThemeFromFile(selectedThemeName);
+  }
   saveSettings();
 }
 
@@ -350,6 +383,10 @@ void Config::loadTheme() {
   std::string themePath = std::string(CONFIG_DIR_PATH) + "/theme.json";
   std::vector<char> buffer = Utils::File::readFile(themePath);
 
+  // Use current preset as fallback
+  Theme base = (themeType == 1) ? getLightPreset() : getDarkPreset();
+  customTheme = base;
+
   if (!buffer.empty()) {
     rapidjson::Document doc;
     doc.Parse(buffer.data());
@@ -358,36 +395,47 @@ void Config::loadTheme() {
       if (doc.HasMember("name") && doc["name"].IsString())
         customTheme.name = doc["name"].GetString();
 
-      auto loadCol = [&](const char *key, u32 &target) {
-        if (doc.HasMember(key)) {
-          if (doc[key].IsString()) {
-            target = Utils::Color::hexToColor(doc[key].GetString());
-          } else if (doc[key].IsUint()) {
-            target = doc[key].GetUint();
+      if (doc.HasMember("description") && doc["description"].IsString())
+        customTheme.description = doc["description"].GetString();
+
+      if (doc.HasMember("author") && doc["author"].IsString())
+        customTheme.author = doc["author"].GetString();
+
+      auto loadCol = [&](const char *category, const char *key, u32 &target) {
+        if (doc.HasMember("colors") && doc["colors"].IsObject()) {
+          const auto &colors = doc["colors"];
+          if (colors.HasMember(category) && colors[category].IsObject()) {
+            const auto &cat = colors[category];
+            if (cat.HasMember(key) && cat[key].IsString()) {
+              target = Utils::Color::hexToColor(cat[key].GetString());
+            }
           }
         }
       };
 
-      loadCol("background", customTheme.background);
-      loadCol("backgroundDark", customTheme.backgroundDark);
-      loadCol("backgroundLight", customTheme.backgroundLight);
-      loadCol("primary", customTheme.primary);
-      loadCol("text", customTheme.text);
-      loadCol("textMuted", customTheme.textMuted);
-      loadCol("success", customTheme.success);
-      loadCol("error", customTheme.error);
-      loadCol("embed", customTheme.embed);
-      loadCol("embedMedia", customTheme.embedMedia);
-      loadCol("reaction", customTheme.reaction);
-      loadCol("reactionMe", customTheme.reactionMe);
-      loadCol("input", customTheme.input);
-      loadCol("boost", customTheme.boost);
-      loadCol("link", customTheme.link);
-      loadCol("separator", customTheme.separator);
-      loadCol("headerBorder", customTheme.headerBorder);
-      loadCol("selection", customTheme.selection);
-      loadCol("overlay", customTheme.overlay);
-      loadCol("white", customTheme.white);
+      loadCol("ui", "background", customTheme.bg);
+      loadCol("ui", "background_dark", customTheme.bg_dark);
+      loadCol("ui", "background_light", customTheme.bg_light);
+      loadCol("ui", "accent", customTheme.accent);
+      loadCol("ui", "selection", customTheme.selection);
+      loadCol("ui", "separator", customTheme.separator);
+      loadCol("ui", "header_border", customTheme.header_border);
+      loadCol("ui", "overlay", customTheme.overlay);
+      loadCol("ui", "pure_white", customTheme.pure_white);
+
+      loadCol("text", "main", customTheme.text);
+      loadCol("text", "muted", customTheme.text_muted);
+      loadCol("text", "link", customTheme.link);
+
+      loadCol("discord", "embed_bg", customTheme.embed_bg);
+      loadCol("discord", "embed_media_bg", customTheme.embed_media_bg);
+      loadCol("discord", "reaction_bg", customTheme.reaction_bg);
+      loadCol("discord", "reaction_me_bg", customTheme.reaction_me_bg);
+      loadCol("discord", "input_bg", customTheme.input_bg);
+      loadCol("discord", "boost", customTheme.boost);
+
+      loadCol("status", "success", customTheme.success);
+      loadCol("status", "error", customTheme.error);
     } else {
       saveTheme();
     }
@@ -404,34 +452,164 @@ void Config::saveTheme() {
   writer.Key("name");
   writer.String(customTheme.name.c_str());
 
-  auto saveCol = [&](const char *key, u32 color) {
-    writer.Key(key);
-    writer.String(Utils::Color::colorToHex(color).c_str());
-  };
+  writer.Key("author");
+  writer.String(customTheme.author.c_str());
 
-  saveCol("background", customTheme.background);
-  saveCol("backgroundDark", customTheme.backgroundDark);
-  saveCol("backgroundLight", customTheme.backgroundLight);
-  saveCol("primary", customTheme.primary);
-  saveCol("text", customTheme.text);
-  saveCol("textMuted", customTheme.textMuted);
-  saveCol("success", customTheme.success);
-  saveCol("error", customTheme.error);
-  saveCol("embed", customTheme.embed);
-  saveCol("embedMedia", customTheme.embedMedia);
-  saveCol("reaction", customTheme.reaction);
-  saveCol("reactionMe", customTheme.reactionMe);
-  saveCol("input", customTheme.input);
-  saveCol("boost", customTheme.boost);
-  saveCol("link", customTheme.link);
-  saveCol("separator", customTheme.separator);
-  saveCol("headerBorder", customTheme.headerBorder);
-  saveCol("selection", customTheme.selection);
-  saveCol("overlay", customTheme.overlay);
-  saveCol("white", customTheme.white);
+  writer.Key("description");
+  writer.String(customTheme.description.c_str());
 
+  writer.Key("colors");
+  writer.StartObject();
+
+  auto writeCategory =
+      [&](const char *name,
+          const std::vector<std::pair<const char *, u32>> &cols) {
+        writer.Key(name);
+        writer.StartObject();
+        for (const auto &p : cols) {
+          writer.Key(p.first);
+          writer.String(Utils::Color::colorToHex(p.second).c_str());
+        }
+        writer.EndObject();
+      };
+
+  writeCategory("ui", {{"background", customTheme.bg},
+                       {"background_dark", customTheme.bg_dark},
+                       {"background_light", customTheme.bg_light},
+                       {"accent", customTheme.accent},
+                       {"selection", customTheme.selection},
+                       {"separator", customTheme.separator},
+                       {"header_border", customTheme.header_border},
+                       {"overlay", customTheme.overlay},
+                       {"pure_white", customTheme.pure_white}});
+
+  writeCategory("text", {{"main", customTheme.text},
+                         {"muted", customTheme.text_muted},
+                         {"link", customTheme.link}});
+
+  writeCategory("discord", {{"embed_bg", customTheme.embed_bg},
+                            {"embed_media_bg", customTheme.embed_media_bg},
+                            {"reaction_bg", customTheme.reaction_bg},
+                            {"reaction_me_bg", customTheme.reaction_me_bg},
+                            {"input_bg", customTheme.input_bg},
+                            {"boost", customTheme.boost}});
+
+  writeCategory("status", {{"success", customTheme.success},
+                           {"error", customTheme.error}});
+
+  writer.EndObject(); // colors
   writer.EndObject();
 
   std::string themePath = std::string(CONFIG_DIR_PATH) + "/theme.json";
   Utils::File::writeFile(themePath, s.GetString());
+}
+
+void Config::setCustomThemeEnabled(bool enabled) {
+  customThemeEnabled = enabled;
+  saveSettings();
+}
+
+void Config::setSelectedThemeName(const std::string &name) {
+  selectedThemeName = name;
+  saveSettings();
+}
+
+std::vector<std::string> Config::getAvailableThemes() {
+  std::vector<std::string> themes;
+  std::string themesPath = std::string(CONFIG_DIR_PATH) + "/themes";
+  struct dirent *ent;
+  DIR *dir = opendir(themesPath.c_str());
+  if (dir != NULL) {
+    while ((ent = readdir(dir)) != NULL) {
+      std::string name = ent->d_name;
+      if (name.length() > 5 && name.substr(name.length() - 5) == ".json") {
+        themes.push_back(name.substr(0, name.length() - 5));
+      }
+    }
+    closedir(dir);
+  }
+  return themes;
+}
+
+bool Config::loadThemeFromFile(const std::string &name) {
+  std::string path = std::string(CONFIG_DIR_PATH) + "/themes/" + name + ".json";
+  std::vector<char> buffer = Utils::File::readFile(path);
+  if (buffer.empty())
+    return false;
+
+  rapidjson::Document doc;
+  doc.Parse(buffer.data());
+  if (doc.HasParseError() || !doc.IsObject())
+    return false;
+
+  Theme newTheme = (themeType == 1) ? getLightPreset() : getDarkPreset();
+  if (doc.HasMember("name") && doc["name"].IsString()) {
+    newTheme.name = doc["name"].GetString();
+  } else {
+    newTheme.name = name;
+  }
+
+  if (doc.HasMember("author") && doc["author"].IsString()) {
+    newTheme.author = doc["author"].GetString();
+  } else {
+    newTheme.author = "";
+  }
+
+  if (doc.HasMember("description") && doc["description"].IsString()) {
+    newTheme.description = doc["description"].GetString();
+  } else {
+    newTheme.description = "";
+  }
+
+  auto loadCol = [&](const char *category, const char *key, u32 &target) {
+    if (doc.HasMember("colors") && doc["colors"].IsObject()) {
+      const auto &colors = doc["colors"];
+      if (colors.HasMember(category) && colors[category].IsObject()) {
+        const auto &cat = colors[category];
+        if (cat.HasMember(key) && cat[key].IsString()) {
+          target = Utils::Color::hexToColor(cat[key].GetString());
+        }
+      }
+    }
+  };
+
+  loadCol("ui", "background", newTheme.bg);
+  loadCol("ui", "background_dark", newTheme.bg_dark);
+  loadCol("ui", "background_light", newTheme.bg_light);
+  loadCol("ui", "accent", newTheme.accent);
+  loadCol("ui", "selection", newTheme.selection);
+  loadCol("ui", "separator", newTheme.separator);
+  loadCol("ui", "header_border", newTheme.header_border);
+  loadCol("ui", "overlay", newTheme.overlay);
+  loadCol("ui", "pure_white", newTheme.pure_white);
+
+  loadCol("text", "main", newTheme.text);
+  loadCol("text", "muted", newTheme.text_muted);
+  loadCol("text", "link", newTheme.link);
+
+  loadCol("discord", "embed_bg", newTheme.embed_bg);
+  loadCol("discord", "embed_media_bg", newTheme.embed_media_bg);
+  loadCol("discord", "reaction_bg", newTheme.reaction_bg);
+  loadCol("discord", "reaction_me_bg", newTheme.reaction_me_bg);
+  loadCol("discord", "input_bg", newTheme.input_bg);
+  loadCol("discord", "boost", newTheme.boost);
+
+  loadCol("status", "success", newTheme.success);
+  loadCol("status", "error", newTheme.error);
+
+  customTheme = newTheme;
+  selectedThemeName = name;
+  saveTheme(); // Cache to theme.json
+  saveSettings();
+  return true;
+}
+
+void Config::deleteTheme(const std::string &name) {
+  std::string path = std::string(CONFIG_DIR_PATH) + "/themes/" + name + ".json";
+  remove(path.c_str());
+  if (selectedThemeName == name) {
+    selectedThemeName = "";
+    customThemeEnabled = false;
+    saveSettings();
+  }
 }

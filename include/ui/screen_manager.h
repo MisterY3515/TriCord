@@ -22,7 +22,8 @@ enum class ScreenType {
   SETTINGS,
   DM_LIST,
   ABOUT,
-  DISCLAIMER
+  DISCLAIMER,
+  THEME_MANAGER
 };
 
 class Screen {
@@ -75,7 +76,7 @@ public:
   static u32 colorBackground();
   static u32 colorBackgroundDark();
   static u32 colorBackgroundLight();
-  static u32 colorPrimary();
+  static u32 colorAccent();
   static u32 colorText();
   static u32 colorTextMuted();
   static u32 colorSuccess();

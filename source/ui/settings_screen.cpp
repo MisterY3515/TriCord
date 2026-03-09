@@ -109,23 +109,26 @@ void SettingsScreen::onEnter() {
   SettingItem theme;
   theme.label = TR("settings.theme");
   theme.description = TR("settings.desc.theme");
-  theme.type = SettingItemType::INTEGER;
+  theme.type = SettingItemType::STEPPER;
   theme.value = Config::getInstance().getThemeType();
   theme.min = 0;
-  theme.max = 2;
+  theme.max = 1;
   theme.valueFormatter = [](int val) {
     if (val == 0)
       return TR("settings.theme.dark");
-    if (val == 1)
-      return TR("settings.theme.light");
-    return TR("settings.theme.custom");
+    return TR("settings.theme.light");
   };
-  theme.onUpdate = [](int val) {
-    Config::getInstance().setThemeType(val);
-    if (val == 2)
-      Config::getInstance().loadTheme();
-  };
+  theme.onUpdate = [](int val) { Config::getInstance().setThemeType(val); };
   allItems.push_back(theme);
+
+  SettingItem customThemeManager;
+  customThemeManager.label = TR("settings.manage_themes");
+  customThemeManager.description = TR("settings.desc.manage_themes");
+  customThemeManager.type = SettingItemType::ACTION;
+  customThemeManager.action = []() {
+    ScreenManager::getInstance().pushScreen(ScreenType::THEME_MANAGER);
+  };
+  allItems.push_back(customThemeManager);
 
   // CHAT
   allItems.push_back(
@@ -391,8 +394,10 @@ void SettingsScreen::update() {
       if (selected->onUpdate)
         selected->onUpdate(selected->value);
     } else if (selected->type == SettingItemType::ACTION) {
-      if (selected->action)
+      if (selected->action) {
         selected->action();
+        return;
+      }
     }
   }
 
