@@ -82,7 +82,6 @@ public:
   static u32 colorSuccess();
   static u32 colorError();
   static u32 colorInput();
-  static u32 colorBoost();
   static u32 colorLink();
 
   static u32 colorSeparator();

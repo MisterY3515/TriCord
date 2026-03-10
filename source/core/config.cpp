@@ -52,7 +52,6 @@ Theme Config::getDarkPreset() {
   t.reaction_bg = 0xFF494240;
   t.reaction_me_bg = 0xFF8B6447;
   t.input_bg = 0xFF252220;
-  t.boost = 0xFFF273FF;
 
   t.success = 0xFF6DB143;
   t.error = 0xFF4D47F0;
@@ -82,7 +81,6 @@ Theme Config::getLightPreset() {
   t.reaction_bg = 0xFFE0E2E5;
   t.reaction_me_bg = 0xFFFAEAED;
   t.input_bg = 0xFFE5E2E0;
-  t.boost = 0xFFF273FF;
 
   t.success = 0xFF6DB143;
   t.error = 0xFF4D47F0;
@@ -432,7 +430,6 @@ void Config::loadTheme() {
       loadCol("discord", "reaction_bg", customTheme.reaction_bg);
       loadCol("discord", "reaction_me_bg", customTheme.reaction_me_bg);
       loadCol("discord", "input_bg", customTheme.input_bg);
-      loadCol("discord", "boost", customTheme.boost);
 
       loadCol("status", "success", customTheme.success);
       loadCol("status", "error", customTheme.error);
@@ -491,8 +488,7 @@ void Config::saveTheme() {
                             {"embed_media_bg", customTheme.embed_media_bg},
                             {"reaction_bg", customTheme.reaction_bg},
                             {"reaction_me_bg", customTheme.reaction_me_bg},
-                            {"input_bg", customTheme.input_bg},
-                            {"boost", customTheme.boost}});
+                            {"input_bg", customTheme.input_bg}});
 
   writeCategory("status", {{"success", customTheme.success},
                            {"error", customTheme.error}});
@@ -592,7 +588,6 @@ bool Config::loadThemeFromFile(const std::string &name) {
   loadCol("discord", "reaction_bg", newTheme.reaction_bg);
   loadCol("discord", "reaction_me_bg", newTheme.reaction_me_bg);
   loadCol("discord", "input_bg", newTheme.input_bg);
-  loadCol("discord", "boost", newTheme.boost);
 
   loadCol("status", "success", newTheme.success);
   loadCol("status", "error", newTheme.error);

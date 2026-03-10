@@ -73,7 +73,6 @@ Omitted keys will automatically fall back to the values of the currently active 
 | `reaction_bg` | `#404249` | Reaction button background. |
 | `reaction_me_bg` | `#47648B` | Your own reaction button background. |
 | `input_bg` | `#202225` | Text input field background. |
-| `boost` | `#FF73F2` | Nitro boost/server booster color. |
 
 ### `status`
 
@@ -130,8 +129,7 @@ A complete template with all color keys.
             "embed_media_bg": "#313338",
             "reaction_bg": "#404249",
             "reaction_me_bg": "#47648B",
-            "input_bg": "#202225",
-            "boost": "#FF73F2"
+            "input_bg": "#202225"
         },
         "status": {
             "success": "#43B16D",

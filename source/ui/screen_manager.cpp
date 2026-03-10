@@ -901,9 +901,6 @@ u32 ScreenManager::colorError() {
 u32 ScreenManager::colorInput() {
   return Config::getInstance().getTheme().input_bg;
 }
-u32 ScreenManager::colorBoost() {
-  return Config::getInstance().getTheme().boost;
-}
 u32 ScreenManager::colorLink() { return Config::getInstance().getTheme().link; }
 
 u32 ScreenManager::colorSeparator() {

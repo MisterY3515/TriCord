@@ -50,7 +50,6 @@ struct Theme {
   u32 reaction_bg;
   u32 reaction_me_bg;
   u32 input_bg;
-  u32 boost;
 
   u32 success;
   u32 error;
