@@ -235,6 +235,9 @@ void ScreenManager::update() {
         }
         shouldBlockScreen = true;
       }
+    } else if (kDown & KEY_SELECT) {
+      hamburgerMenu.toggle();
+      shouldBlockScreen = !hamburgerMenu.isClosed();
     }
   }
 

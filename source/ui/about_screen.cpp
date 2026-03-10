@@ -25,7 +25,7 @@ void AboutScreen::update() {
   u32 kDown = hidKeysDown();
   u32 kHeld = hidKeysHeld();
 
-  if (kDown & (KEY_B | KEY_SELECT)) {
+  if (kDown & KEY_B) {
     ScreenManager::getInstance().returnToPreviousScreen();
     return;
   }
