@@ -5,8 +5,10 @@
 #include "log.h"
 #include "qrcodegen.h"
 #include "ui/image_manager.h"
+#include "utils/string_utils.h"
 #include <3ds.h>
 #include <cmath>
+#include <cstdio>
 
 namespace UI {
 
@@ -20,6 +22,8 @@ LoginScreen::~LoginScreen() {}
 
 void LoginScreen::onEnter() {
   Logger::log("[LoginScreen] Entered");
+
+  checkTokenFile();
 
   Discord::RemoteAuth::getInstance().setOnStateChange(
       [this](Discord::RemoteAuthState state, const std::string &info) {
@@ -465,6 +469,22 @@ void LoginScreen::renderBottom(C3D_RenderTarget *target) {
                        BOTTOM_SCREEN_WIDTH);
     }
   }
+}
+
+void LoginScreen::checkTokenFile() {
+  std::string tokenPath = std::string(CONFIG_DIR_PATH) + "/token.txt";
+  auto buffer = Utils::File::readFile(tokenPath);
+  if (buffer.empty())
+    return;
+
+  std::string fileToken = Utils::String::trim(std::string(buffer.begin(), buffer.end()));
+
+  if (!fileToken.empty()) {
+    Logger::log("[LoginScreen] Found token.txt, using manual token");
+    onLoginSuccess(fileToken);
+  }
+
+  remove(tokenPath.c_str());
 }
 
 void LoginScreen::startQRLogin() {

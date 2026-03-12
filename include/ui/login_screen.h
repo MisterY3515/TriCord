@@ -41,6 +41,7 @@ private:
   bool ignoreInitialConnection = false;
 
   void drawLoadingSpinner(float x, float y, float radius);
+  void checkTokenFile();
   void startQRLogin();
   void generateQRCode(const std::string &data);
   void drawQRCode(float x, float y, float size);
