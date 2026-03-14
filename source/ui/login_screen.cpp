@@ -5,6 +5,7 @@
 #include "log.h"
 #include "qrcodegen.h"
 #include "ui/image_manager.h"
+#include "utils/file_utils.h"
 #include "utils/string_utils.h"
 #include <3ds.h>
 #include <cmath>
