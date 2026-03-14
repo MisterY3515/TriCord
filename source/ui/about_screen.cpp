@@ -96,7 +96,7 @@ void AboutScreen::renderTop(C3D_RenderTarget *target) {
   }
 
   drawCenteredRichText(centerY + 30.0f, 0.5f, 0.8f, 0.8f,
-                       ScreenManager::colorWhite(), "TriCord", 400.0f);
+                       ScreenManager::colorText(), "TriCord", 400.0f);
 
   std::string verStr = "Version " + std::string(APP_VERSION);
   drawCenteredText(centerY + 55.0f, 0.5f, 0.5f, 0.5f,
@@ -127,7 +127,7 @@ void AboutScreen::renderBottom(C3D_RenderTarget *target) {
   };
 
   auto drawEntry = [&](const std::string &name, const std::string &desc) {
-    drawText(x + 8.0f, y, 0.5f, 0.38f, 0.38f, ScreenManager::colorWhite(),
+    drawText(x + 8.0f, y, 0.5f, 0.38f, 0.38f, ScreenManager::colorText(),
              name);
     float w = measureText(name, 0.38f, 0.38f);
     drawText(x + 12.0f + w, y + 1.0f, 0.5f, 0.35f, 0.35f,
@@ -151,7 +151,7 @@ void AboutScreen::renderBottom(C3D_RenderTarget *target) {
 
   drawSectionTitle("Built With");
   auto drawLib = [&](const std::string &name) {
-    drawText(x + 8.0f, y, 0.5f, 0.36f, 0.36f, ScreenManager::colorWhite(),
+    drawText(x + 8.0f, y, 0.5f, 0.36f, 0.36f, ScreenManager::colorText(),
              "\u2022 " + name);
     y += 13.0f;
   };
