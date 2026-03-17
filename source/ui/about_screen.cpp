@@ -127,8 +127,7 @@ void AboutScreen::renderBottom(C3D_RenderTarget *target) {
   };
 
   auto drawEntry = [&](const std::string &name, const std::string &desc) {
-    drawText(x + 8.0f, y, 0.5f, 0.38f, 0.38f, ScreenManager::colorText(),
-             name);
+    drawText(x + 8.0f, y, 0.5f, 0.38f, 0.38f, ScreenManager::colorText(), name);
     float w = measureText(name, 0.38f, 0.38f);
     drawText(x + 12.0f + w, y + 1.0f, 0.5f, 0.35f, 0.35f,
              ScreenManager::colorTextMuted(), " - " + desc);
@@ -142,6 +141,7 @@ void AboutScreen::renderBottom(C3D_RenderTarget *target) {
   drawEntry("RossoDev", "Italian Translation");
   drawEntry("MorrisTheGamer", "German Translation");
   drawEntry("ReisuErx", "Polish Translation");
+  drawEntry("wiretoscreen", "Brazilian Portuguese Translation");
   drawEntry("Discord Userdoccers", "API Research");
 
   y += 2.0f;
