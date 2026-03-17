@@ -4,10 +4,12 @@
 #include "discord/discord_client.h"
 #include "discord/types.h"
 #include "ui/screen_manager.h"
+#include "ui/emoji_picker.h"
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 namespace UI {
@@ -21,6 +23,7 @@ public:
   void renderTop(C3D_RenderTarget *target) override;
   void renderBottom(C3D_RenderTarget *target) override;
   void onEnter() override;
+  bool hidesMenu() const override;
 
 private:
   std::string channelId;
@@ -61,7 +64,14 @@ private:
   std::set<std::string> pendingMemberFetches;
   std::map<std::string, uint64_t> failedMemberFetches;
   std::shared_ptr<bool> aliveToken;
+  enum class BottomScreenMode { TOPIC, EMOJI_PICKER };
+  BottomScreenMode bottomMode;
+
+  std::unique_ptr<EmojiPicker> emojiPicker;
+
   void renderMenu();
+  std::unordered_set<std::string> getVisibleTwemojis();
+
 
   void fetchMessages();
   void fetchOlderMessages();
@@ -82,7 +92,6 @@ private:
   float drawReactions(const Discord::Message &msg, float x, float y,
                       bool isSelected);
   float calculateMessageHeight(const Discord::Message &msg, bool showHeader);
-  float calculateMessageHeight(const Discord::Message &msg);
   float calculateEmbedHeight(const Discord::Embed &embed, float maxWidth);
   float renderEmbed(const Discord::Embed &embed, float x, float y,
                     float maxWidth);
@@ -93,6 +102,10 @@ private:
   void rebuildLayoutCache();
   void ensureSelectionVisible();
   void catchUpMessages();
+
+
+  void renderReactionIcon();
+
 };
 
 } // namespace UI

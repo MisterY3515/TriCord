@@ -3,6 +3,7 @@
 #include "core/i18n.h"
 #include "log.h"
 #include "ui/screen_manager.h"
+#include "utils/string_utils.h"
 #include "utils/utf8_utils.h"
 #include <3ds.h>
 #include <cmath>
@@ -364,21 +365,7 @@ bool isEmojiOnly(const std::string &text, int &count) {
   return count > 0;
 }
 
-std::string getEmojiFilename(const std::string &emoji) {
-  if (emoji.empty())
-    return "";
-  std::string result;
-  size_t cursor = 0;
-  while (cursor < emoji.length()) {
-    uint32_t cp = Utils::Utf8::decodeNext(emoji, cursor);
-    if (cp == 0)
-      break;
-    if (!result.empty())
-      result += "-";
-    result += Utils::Utf8::codepointToHex(cp);
-  }
-  return result;
-}
+
 
 bool canGroupWithPrevious(const Discord::Message &current,
                           const Discord::Message &previous) {
@@ -450,12 +437,7 @@ std::string getRelativeTime(time_t targetEpoch) {
   strftime(buffer, sizeof(buffer), fmt.c_str(), lt);
 
   std::string result(buffer);
-  size_t first = result.find_first_not_of(' ');
-  if (std::string::npos != first) {
-    size_t last = result.find_last_not_of(' ');
-    result = result.substr(first, (last - first + 1));
-  }
-  return result;
+  return Utils::String::trim(result);
 }
 
 std::string getLocalDateString(const std::string &timestamp) {

@@ -36,6 +36,7 @@ public:
   virtual void renderBottom(C3D_RenderTarget *target) = 0;
   virtual void onEnter() {}
   virtual void onExit() {}
+  virtual bool hidesMenu() const { return false; }
 
   bool shouldExit() const { return exitRequested; }
 

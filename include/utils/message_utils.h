@@ -20,10 +20,8 @@ std::string formatTimeOnly(const std::string &timestamp);
 std::string getISOTimestamp(time_t epoch);
 std::string getRelativeTime(time_t targetEpoch);
 
-int getUtf8Len(char c);
 std::vector<std::string> wrapText(const std::string &text, float maxWidth,
                                   float scale, bool unicodeOnly = false);
-std::string getEmojiFilename(const std::string &emoji);
 bool isEmojiOnly(const std::string &text, int &count);
 std::string getChannelDisplayName(const Discord::Channel &channel);
 

@@ -98,7 +98,6 @@ void LoginScreen::update() {
 
     float t = 0.0f;
     if (animTimer < 1.0f) {
-
       float x = animTimer;
       const float c1 = 1.0f;
       const float c3 = c1 + 1.0f;
@@ -106,7 +105,6 @@ void LoginScreen::update() {
       float xm1 = x - 1.0f;
       t = 1.0f + c3 * pow(xm1, 3.0f) + c1 * pow(xm1, 2.0f);
     } else {
-
       t = 1.0f;
     }
 

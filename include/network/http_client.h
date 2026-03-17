@@ -33,6 +33,8 @@ public:
   HttpResponse
   patch(const std::string &url, const std::string &body,
         const std::map<std::string, std::string> &extraHeaders = {});
+  HttpResponse put(const std::string &url, const std::string &body = "",
+                   const std::map<std::string, std::string> &extraHeaders = {});
   HttpResponse del(const std::string &url,
                    const std::map<std::string, std::string> &extraHeaders = {});
 

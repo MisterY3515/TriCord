@@ -374,7 +374,8 @@ bool ScreenManager::isMenuHidden() const {
 
   return (currentType == ScreenType::LOGIN) ||
          (currentType == ScreenType::DISCLAIMER) ||
-         (currentType == ScreenType::ADD_ACCOUNT && isConnecting);
+         (currentType == ScreenType::ADD_ACCOUNT && isConnecting) ||
+         (currentScreen && currentScreen->hidesMenu());
 }
 
 bool ScreenManager::shouldShowBackArrow() const {
@@ -560,7 +561,7 @@ void drawRichText(float x, float y, float z, float scaleX, float scaleY,
     if (Utils::Utf8::isEmoji(codepoint)) {
       size_t seqCursor = cursor;
       std::string sequence = Utils::Utf8::getEmojiSequence(text, seqCursor);
-      std::string hex = MessageUtils::getEmojiFilename(sequence);
+      std::string hex = Utils::Utf8::utf8ToHex(sequence);
       EmojiManager::EmojiInfo info =
           EmojiManager::getInstance().getTwemojiInfo(hex);
       float emojiSize = 28.0f * scaleY;
@@ -667,7 +668,7 @@ float measureRichTextImpl(const std::string &text, float scaleX, float scaleY,
     if (Utils::Utf8::isEmoji(codepoint)) {
       size_t seqCursor = cursor;
       std::string sequence = Utils::Utf8::getEmojiSequence(text, seqCursor);
-      std::string hex = MessageUtils::getEmojiFilename(sequence);
+      std::string hex = Utils::Utf8::utf8ToHex(sequence);
       EmojiManager::EmojiInfo info =
           EmojiManager::getInstance().getTwemojiInfo(hex);
       float emojiSize = 28.0f * scaleY;
@@ -819,7 +820,7 @@ void drawRichTextUnicodeOnly(float x, float y, float z, float scaleX,
     if (Utils::Utf8::isEmoji(firstCp)) {
       size_t seqCursor = cursor;
       std::string sequence = Utils::Utf8::getEmojiSequence(text, seqCursor);
-      std::string hex = MessageUtils::getEmojiFilename(sequence);
+      std::string hex = Utils::Utf8::utf8ToHex(sequence);
       EmojiManager::EmojiInfo info =
           EmojiManager::getInstance().getTwemojiInfo(hex);
       float emojiSize = 28.0f * scaleY;

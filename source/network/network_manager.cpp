@@ -177,6 +177,8 @@ void NetworkManager::workerThread(RequestPriority type) {
         resp = client.post(req.url, req.body, req.headers);
       } else if (req.method == "PATCH") {
         resp = client.patch(req.url, req.body, req.headers);
+      } else if (req.method == "PUT") {
+        resp = client.put(req.url, req.body, req.headers);
       } else if (req.method == "DELETE") {
         resp = client.del(req.url, req.headers);
       }

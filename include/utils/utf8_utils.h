@@ -8,8 +8,11 @@
 namespace Utils {
 namespace Utf8 {
 uint32_t decodeNext(const std::string &text, size_t &cursor);
+std::string encode(uint32_t cp);
 
 std::string codepointToHex(uint32_t cp);
+std::string hexToUtf8(const std::string &hex);
+std::string utf8ToHex(const std::string &utf8);
 
 bool isEmoji(uint32_t cp);
 bool isEmojiModifier(uint32_t cp);

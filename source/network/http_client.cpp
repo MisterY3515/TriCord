@@ -268,6 +268,12 @@ HttpResponse HttpClient::performRequest(
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PATCH");
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
     curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)body.length());
+  } else if (method == "PUT") {
+    curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+    if (!body.empty()) {
+      curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str());
+      curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)body.length());
+    }
   } else if (method == "DELETE") {
     curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
   } else {
@@ -316,6 +322,12 @@ HttpResponse
 HttpClient::patch(const std::string &url, const std::string &body,
                   const std::map<std::string, std::string> &extraHeaders) {
   return performRequest(url, "PATCH", body, extraHeaders);
+}
+
+HttpResponse
+HttpClient::put(const std::string &url, const std::string &body,
+                const std::map<std::string, std::string> &extraHeaders) {
+  return performRequest(url, "PUT", body, extraHeaders);
 }
 
 HttpResponse

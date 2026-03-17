@@ -151,6 +151,11 @@ public:
   void triggerTypingIndicator(const std::string &channelId);
   std::vector<TypingUser> getTypingUsers(const std::string &channelId);
 
+  void addReaction(const std::string &channelId, const std::string &messageId,
+                   const std::string &emoji);
+  void removeReaction(const std::string &channelId,
+                      const std::string &messageId, const std::string &emoji);
+
   void performLogin(const std::string &email, const std::string &password,
                     LoginCallback cb);
   void submitMFA(const std::string &ticket, const std::string &code,
@@ -164,6 +169,7 @@ public:
   void updatePresence(UserStatus status);
 
   Channel getChannel(const std::string &channelId);
+  Guild getGuild(const std::string &guildId);
   Member getMember(const std::string &guildId, const std::string &userId);
   int getRoleColor(const std::string &guildId, const Member &member);
   int getRoleColor(const std::string &guildId, const std::string &userId);

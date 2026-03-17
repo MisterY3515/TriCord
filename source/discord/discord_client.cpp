@@ -10,6 +10,7 @@
 #include <3ds.h>
 #include <cstdio>
 #include <cstring>
+#include <iomanip>
 #include <optional>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
@@ -49,6 +50,26 @@ UserStatus stringToStatus(const std::string &s) {
   if (s == "offline")
     return UserStatus::OFFLINE;
   return UserStatus::UNKNOWN;
+}
+
+std::string urlEncode(const std::string &value) {
+  std::ostringstream escaped;
+  escaped.fill('0');
+  escaped << std::hex;
+
+  for (auto i = value.begin(), n = value.end(); i != n; ++i) {
+    std::string::value_type c = (*i);
+
+    if (isalnum((unsigned char)c) || c == '-' || c == '_' || c == '.' ||
+        c == '~') {
+      escaped << c;
+      continue;
+    }
+
+    escaped << std::uppercase << '%' << std::setw(2) << int((unsigned char)c);
+  }
+
+  return escaped.str();
 }
 } // namespace
 
@@ -321,6 +342,50 @@ DiscordClient::getTypingUsers(const std::string &channelId) {
     return typingUsers[channelId];
   }
   return {};
+}
+
+void DiscordClient::addReaction(const std::string &channelId,
+                                const std::string &messageId,
+                                const std::string &emoji) {
+  if (channelId.empty() || messageId.empty() || emoji.empty())
+    return;
+
+  std::string encodedEmoji = urlEncode(emoji);
+  std::string url = "https://discord.com/api/v10/channels/" + channelId +
+                    "/messages/" + messageId + "/reactions/" + encodedEmoji +
+                    "/@me";
+
+  Network::NetworkManager::getInstance().enqueue(
+      url, "PUT", "", Network::RequestPriority::INTERACTIVE,
+      [](const Network::HttpResponse &resp) {
+        if (!resp.success) {
+          Logger::log("[Discord] Failed to add reaction: %ld %s",
+                      resp.statusCode, resp.body.c_str());
+        }
+      },
+      {{"Authorization", getInstance().token}});
+}
+
+void DiscordClient::removeReaction(const std::string &channelId,
+                                   const std::string &messageId,
+                                   const std::string &emoji) {
+  if (channelId.empty() || messageId.empty() || emoji.empty())
+    return;
+
+  std::string encodedEmoji = urlEncode(emoji);
+  std::string url = "https://discord.com/api/v10/channels/" + channelId +
+                    "/messages/" + messageId + "/reactions/" + encodedEmoji +
+                    "/@me";
+
+  Network::NetworkManager::getInstance().enqueue(
+      url, "DELETE", "", Network::RequestPriority::INTERACTIVE,
+      [](const Network::HttpResponse &resp) {
+        if (!resp.success) {
+          Logger::log("[Discord] Failed to remove reaction: %ld %s",
+                      resp.statusCode, resp.body.c_str());
+        }
+      },
+      {{"Authorization", getInstance().token}});
 }
 
 void DiscordClient::setState(ConnectionState newState,
@@ -1423,6 +1488,15 @@ Channel DiscordClient::getChannel(const std::string &channelId) {
     }
   }
   return Channel();
+}
+
+Guild DiscordClient::getGuild(const std::string &guildId) {
+  for (const auto &guild : guilds) {
+    if (guild.id == guildId) {
+      return guild;
+    }
+  }
+  return Guild();
 }
 
 Member DiscordClient::getMember(const std::string &guildId,

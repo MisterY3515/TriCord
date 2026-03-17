@@ -1,6 +1,8 @@
 #include "utils/utf8_utils.h"
 #include <iomanip>
 #include <sstream>
+#include <cstdio>
+#include <string>
 
 namespace Utils {
 namespace Utf8 {
@@ -44,10 +46,61 @@ uint32_t decodeNext(const std::string &text, size_t &cursor) {
   return codepoint;
 }
 
+std::string encode(uint32_t cp) {
+  std::string result;
+  if (cp < 0x80) {
+    result += (char)cp;
+  } else if (cp < 0x800) {
+    result += (char)(0xC0 | (cp >> 6));
+    result += (char)(0x80 | (cp & 0x3F));
+  } else if (cp < 0x10000) {
+    result += (char)(0xE0 | (cp >> 12));
+    result += (char)(0x80 | ((cp >> 6) & 0x3F));
+    result += (char)(0x80 | (cp & 0x3F));
+  } else {
+    result += (char)(0xF0 | (cp >> 18));
+    result += (char)(0x80 | ((cp >> 12) & 0x3F));
+    result += (char)(0x80 | ((cp >> 6) & 0x3F));
+    result += (char)(0x80 | (cp & 0x3F));
+  }
+  return result;
+}
+
 std::string codepointToHex(uint32_t cp) {
-  std::stringstream ss;
-  ss << std::hex << cp;
-  return ss.str();
+  char buffer[16];
+  snprintf(buffer, sizeof(buffer), "%x", (unsigned int)cp);
+  return std::string(buffer);
+}
+
+std::string hexToUtf8(const std::string &hex) {
+  std::string result;
+  size_t start = 0;
+  size_t end;
+  while ((end = hex.find('-', start)) != std::string::npos) {
+    std::string current = hex.substr(start, end - start);
+    if (!current.empty()) {
+      result += encode(std::stoul(current, nullptr, 16));
+    }
+    start = end + 1;
+  }
+  std::string current = hex.substr(start);
+  if (!current.empty()) {
+    result += encode(std::stoul(current, nullptr, 16));
+  }
+  return result;
+}
+
+std::string utf8ToHex(const std::string &utf8) {
+  if (utf8.empty()) return "";
+  std::string result;
+  size_t cursor = 0;
+  while (cursor < utf8.length()) {
+    uint32_t cp = decodeNext(utf8, cursor);
+    if (cp == 0) break;
+    if (!result.empty()) result += "-";
+    result += codepointToHex(cp);
+  }
+  return result;
 }
 
 bool isEmoji(uint32_t cp) {
