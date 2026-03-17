@@ -2,7 +2,6 @@
 #include <citro2d.h>
 #include <string>
 
-
 namespace Utils {
 namespace Color {
 

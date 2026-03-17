@@ -13,63 +13,62 @@
 namespace UI {
 
 struct EmojiCategory {
-  std::vector<size_t> emojiIndices;
+	std::vector<size_t> emojiIndices;
 };
 
 struct EmojiDataEntry {
-  char hex[56];
-  int32_t order;
-  int32_t category;
+	char hex[56];
+	int32_t order;
+	int32_t category;
 };
 
 class EmojiManager {
-public:
-  static EmojiManager &getInstance();
+  public:
+	static EmojiManager &getInstance();
 
-  void init();
-  void shutdown();
-  void update();
+	void init();
+	void shutdown();
+	void update();
 
-  struct EmojiInfo {
-    C3D_Tex *tex = nullptr;
-    int originalW = 0;
-    int originalH = 0;
-    uint32_t lastUsedFrame = 0;
-    bool isLoading = false;
-  };
+	struct EmojiInfo {
+		C3D_Tex *tex = nullptr;
+		int originalW = 0;
+		int originalH = 0;
+		uint32_t lastUsedFrame = 0;
+		bool isLoading = false;
+	};
 
-  EmojiInfo getEmojiInfo(const std::string &emojiId);
-  EmojiInfo getTwemojiInfo(const std::string &codepointHex);
+	EmojiInfo getEmojiInfo(const std::string &emojiId);
+	EmojiInfo getTwemojiInfo(const std::string &codepointHex);
 
-  void prefetchEmoji(const std::string &emojiId);
-  void prefetchEmojisFromText(const std::string &text);
+	void prefetchEmoji(const std::string &emojiId);
+	void prefetchEmojisFromText(const std::string &text);
 
-  const std::vector<EmojiCategory> &getCategories();
-  const std::vector<std::string> &getCodepoints();
-  void onCategoryChanged(const std::unordered_set<std::string> &keep = {});
+	const std::vector<EmojiCategory> &getCategories();
+	const std::vector<std::string> &getCodepoints();
+	void onCategoryChanged(const std::unordered_set<std::string> &keep = {});
 
+  private:
+	EmojiManager() = default;
+	~EmojiManager();
 
-private:
-  EmojiManager() = default;
-  ~EmojiManager();
+	void loadEmojiData();
 
-  void loadEmojiData();
+	std::map<std::string, EmojiInfo> emojiCache;
+	std::map<std::string, EmojiInfo> twemojiCache;
 
-  std::map<std::string, EmojiInfo> emojiCache;
-  std::map<std::string, EmojiInfo> twemojiCache;
+	std::deque<std::string> priorityQueue;
+	std::deque<std::string> backgroundQueue;
+	std::unordered_set<std::string> inQueue;
 
-  std::deque<std::string> priorityQueue;
-  std::deque<std::string> backgroundQueue;
-  std::unordered_set<std::string> inQueue;
+	std::vector<EmojiCategory> categories;
+	std::vector<std::string> allCodepoints;
+	bool dataLoaded = false;
 
-  std::vector<EmojiCategory> categories;
-  std::vector<std::string> allCodepoints;
-  bool dataLoaded = false;
+	std::shared_mutex cacheMutex;
+	uint32_t frameCounter = 0;
 
-  std::shared_mutex cacheMutex;
-  uint32_t frameCounter = 0;
-
-  static const size_t MAX_TWEMOJI_CACHE = 250;
+	static const size_t MAX_TWEMOJI_CACHE = 250;
 };
 
 } // namespace UI

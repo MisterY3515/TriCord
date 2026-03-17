@@ -21,57 +21,57 @@ namespace Logger {
 void init() { mkdir(LOG_DIR, 0700); }
 
 void log(const char *fmt, ...) {
-  char buffer[1024];
-  va_list args;
+	char buffer[1024];
+	va_list args;
 
-  va_start(args, fmt);
-  vsnprintf(buffer, sizeof(buffer), fmt, args);
-  va_end(args);
+	va_start(args, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, args);
+	va_end(args);
 
-  std::lock_guard<std::mutex> lock(logMutex);
-  std::string logLine(buffer);
+	std::lock_guard<std::mutex> lock(logMutex);
+	std::string logLine(buffer);
 
-  logBuffer.push_back(logLine);
-  if (logBuffer.size() > MAX_LOG_LINES) {
-    logBuffer.pop_front();
-  }
+	logBuffer.push_back(logLine);
+	if (logBuffer.size() > MAX_LOG_LINES) {
+		logBuffer.pop_front();
+	}
 
-  printf("%s\n", buffer);
-  svcOutputDebugString(buffer, strlen(buffer));
+	printf("%s\n", buffer);
+	svcOutputDebugString(buffer, strlen(buffer));
 
-  if (fileLoggingEnabled) {
-    FILE *f = fopen(LOG_FILE, "a");
-    if (f) {
-      fprintf(f, "%s\n", buffer);
-      fclose(f);
-    }
-  }
+	if (fileLoggingEnabled) {
+		FILE *f = fopen(LOG_FILE, "a");
+		if (f) {
+			fprintf(f, "%s\n", buffer);
+			fclose(f);
+		}
+	}
 }
 
 std::vector<std::string> getRecentLogs() {
-  std::lock_guard<std::mutex> lock(logMutex);
-  std::vector<std::string> logs;
-  for (const auto &line : logBuffer) {
-    logs.push_back(line);
-  }
-  return logs;
+	std::lock_guard<std::mutex> lock(logMutex);
+	std::vector<std::string> logs;
+	for (const auto &line : logBuffer) {
+		logs.push_back(line);
+	}
+	return logs;
 }
 
 void setFileLoggingEnabled(bool enabled) {
-  std::lock_guard<std::mutex> lock(logMutex);
-  fileLoggingEnabled = enabled;
+	std::lock_guard<std::mutex> lock(logMutex);
+	fileLoggingEnabled = enabled;
 
-  if (enabled) {
-    FILE *f = fopen(LOG_FILE, "w");
-    if (f) {
-      fprintf(f, "=== TriCord Log Started ===\n");
-      fclose(f);
-    }
-  }
+	if (enabled) {
+		FILE *f = fopen(LOG_FILE, "w");
+		if (f) {
+			fprintf(f, "=== TriCord Log Started ===\n");
+			fclose(f);
+		}
+	}
 }
 
 bool isFileLoggingEnabled() {
-  std::lock_guard<std::mutex> lock(logMutex);
-  return fileLoggingEnabled;
+	std::lock_guard<std::mutex> lock(logMutex);
+	return fileLoggingEnabled;
 }
 } // namespace Logger

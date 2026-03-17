@@ -10,46 +10,40 @@
 namespace Discord {
 
 struct AvatarInfo {
-  C3D_Tex *tex = nullptr;
-  std::string url;
-  bool loading = false;
+	C3D_Tex *tex = nullptr;
+	std::string url;
+	bool loading = false;
 };
 
 class AvatarCache {
-public:
-  static AvatarCache &getInstance();
+  public:
+	static AvatarCache &getInstance();
 
-  void init();
-  void shutdown();
-  void update();
-  void clear();
+	void init();
+	void shutdown();
+	void update();
+	void clear();
 
-  C3D_Tex *getAvatar(const std::string &userId, const std::string &avatarHash,
-                     const std::string &discriminator);
-  C3D_Tex *getGuildIcon(const std::string &guildId,
-                        const std::string &iconHash);
-  C3D_Tex *getChannelIcon(const std::string &channelId,
-                          const std::string &iconHash);
+	C3D_Tex *getAvatar(const std::string &userId, const std::string &avatarHash, const std::string &discriminator);
+	C3D_Tex *getGuildIcon(const std::string &guildId, const std::string &iconHash);
+	C3D_Tex *getChannelIcon(const std::string &channelId, const std::string &iconHash);
 
-  void prefetchAvatar(const std::string &userId, const std::string &avatarHash,
-                      const std::string &discriminator);
-  void prefetchGuildIcon(const std::string &guildId,
-                         const std::string &iconHash);
-  void prefetchChannelIcon(const std::string &channelId,
-                           const std::string &iconHash);
+	void prefetchAvatar(const std::string &userId, const std::string &avatarHash, const std::string &discriminator);
+	void prefetchGuildIcon(const std::string &guildId, const std::string &iconHash);
+	void prefetchChannelIcon(const std::string &channelId, const std::string &iconHash);
 
-private:
-  AvatarCache() {}
-  ~AvatarCache() { clear(); }
+  private:
+	AvatarCache() {}
+	~AvatarCache() { clear(); }
 
-  std::map<std::string, AvatarInfo> cache;
-  std::recursive_mutex cacheMutex;
+	std::map<std::string, AvatarInfo> cache;
+	std::recursive_mutex cacheMutex;
 
-  struct PendingAvatar {
-    std::string id;
-    C3D_Tex *tex = nullptr;
-  };
-  std::vector<PendingAvatar> pendingAvatars;
+	struct PendingAvatar {
+		std::string id;
+		C3D_Tex *tex = nullptr;
+	};
+	std::vector<PendingAvatar> pendingAvatars;
 };
 
 } // namespace Discord

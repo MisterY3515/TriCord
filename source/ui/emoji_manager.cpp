@@ -16,344 +16,352 @@
 namespace UI {
 
 EmojiManager &EmojiManager::getInstance() {
-  static EmojiManager instance;
-  return instance;
+	static EmojiManager instance;
+	return instance;
 }
 
 void EmojiManager::init() { loadEmojiData(); }
 
 void EmojiManager::loadEmojiData() {
-  if (dataLoaded)
-    return;
+	if (dataLoaded) {
+		return;
+	}
 
-  std::lock_guard<std::shared_mutex> lock(cacheMutex);
+	std::lock_guard<std::shared_mutex> lock(cacheMutex);
 
-  std::ifstream f("romfs:/emoji_data.bin", std::ios::binary);
-  if (!f) {
-    Logger::log("Error: Failed to open romfs:/emoji_data.bin");
-    dataLoaded = true;
-    return;
-  }
+	std::ifstream f("romfs:/emoji_data.bin", std::ios::binary);
+	if (!f) {
+		Logger::log("Error: Failed to open romfs:/emoji_data.bin");
+		dataLoaded = true;
+		return;
+	}
 
-  char magic[4];
-  f.read(magic, 4);
-  if (std::memcmp(magic, "EMOJ", 4) != 0) {
-    Logger::log("Error: Invalid magic in emoji_data.bin");
-    return;
-  }
+	char magic[4];
+	f.read(magic, 4);
+	if (std::memcmp(magic, "EMOJ", 4) != 0) {
+		Logger::log("Error: Invalid magic in emoji_data.bin");
+		return;
+	}
 
-  uint32_t version, count;
-  f.read((char *)&version, 4);
-  f.read((char *)&count, 4);
+	uint32_t version, count;
+	f.read((char *)&version, 4);
+	f.read((char *)&count, 4);
 
-  std::vector<EmojiDataEntry> dataEntries(count);
-  f.read((char *)dataEntries.data(), count * sizeof(EmojiDataEntry));
-  f.close();
+	std::vector<EmojiDataEntry> dataEntries(count);
+	f.read((char *)dataEntries.data(), count * sizeof(EmojiDataEntry));
+	f.close();
 
-  std::vector<EmojiDataEntry> sortedEntries = dataEntries;
-  std::sort(sortedEntries.begin(), sortedEntries.end(),
-            [](const EmojiDataEntry &a, const EmojiDataEntry &b) {
-              if (a.category != b.category)
-                return a.category < b.category;
-              return a.order < b.order;
-            });
+	std::vector<EmojiDataEntry> sortedEntries = dataEntries;
+	std::sort(sortedEntries.begin(), sortedEntries.end(), [](const EmojiDataEntry &a, const EmojiDataEntry &b) {
+		if (a.category != b.category) {
+			return a.category < b.category;
+		}
+		return a.order < b.order;
+	});
 
-  std::unordered_set<std::string> availableFiles;
-  DIR *dir = opendir("romfs:/twemoji17/");
-  if (dir) {
-    struct dirent *ent;
-    while ((ent = readdir(dir)) != NULL) {
-      std::string fname = ent->d_name;
-      if (fname.size() > 4 && fname.substr(fname.size() - 4) == ".png") {
-        availableFiles.insert(fname.substr(0, fname.size() - 4));
-      }
-    }
-    closedir(dir);
-  }
+	std::unordered_set<std::string> availableFiles;
+	DIR *dir = opendir("romfs:/twemoji17/");
+	if (dir) {
+		struct dirent *ent;
+		while ((ent = readdir(dir)) != NULL) {
+			std::string fname = ent->d_name;
+			if (fname.size() > 4 && fname.substr(fname.size() - 4) == ".png") {
+				availableFiles.insert(fname.substr(0, fname.size() - 4));
+			}
+		}
+		closedir(dir);
+	}
 
-  categories.clear();
-  for (int i = 0; i < 8; i++) {
-    categories.push_back({});
-  }
+	categories.clear();
+	for (int i = 0; i < 8; i++) {
+		categories.push_back({});
+	}
 
-  allCodepoints.clear();
-  allCodepoints.reserve(count);
+	allCodepoints.clear();
+	allCodepoints.reserve(count);
 
-  for (const auto &entry : sortedEntries) {
-    std::string hexStr = entry.hex;
-    std::transform(hexStr.begin(), hexStr.end(), hexStr.begin(), ::tolower);
+	for (const auto &entry : sortedEntries) {
+		std::string hexStr = entry.hex;
+		std::transform(hexStr.begin(), hexStr.end(), hexStr.begin(), ::tolower);
 
-    std::string checkStr = hexStr;
-    bool exists = (availableFiles.count(checkStr) > 0);
-    if (!exists) {
-      size_t fe0f = checkStr.find("-fe0f");
-      if (fe0f != std::string::npos) {
-        checkStr.erase(fe0f, 5);
-        exists = (availableFiles.count(checkStr) > 0);
-      }
-    }
+		std::string checkStr = hexStr;
+		bool exists = (availableFiles.count(checkStr) > 0);
+		if (!exists) {
+			size_t fe0f = checkStr.find("-fe0f");
+			if (fe0f != std::string::npos) {
+				checkStr.erase(fe0f, 5);
+				exists = (availableFiles.count(checkStr) > 0);
+			}
+		}
 
-    size_t idx = allCodepoints.size();
-    allCodepoints.push_back(hexStr);
+		size_t idx = allCodepoints.size();
+		allCodepoints.push_back(hexStr);
 
-    if (exists && entry.category >= 0 &&
-        entry.category < (int)categories.size()) {
-      categories[entry.category].emojiIndices.push_back(idx);
-    }
-  }
+		if (exists && entry.category >= 0 && entry.category < (int)categories.size()) {
+			categories[entry.category].emojiIndices.push_back(idx);
+		}
+	}
 
-  dataLoaded = true;
-  Logger::log("[EmojiManager] Initialized with %d entries and %d categories",
-              (int)count, (int)categories.size());
+	dataLoaded = true;
+	Logger::log("[EmojiManager] Initialized with %d entries and %d categories", (int)count, (int)categories.size());
 }
 
 const std::vector<EmojiCategory> &EmojiManager::getCategories() {
-  if (!dataLoaded)
-    loadEmojiData();
-  return categories;
+	if (!dataLoaded) {
+		loadEmojiData();
+	}
+	return categories;
 }
 
 const std::vector<std::string> &EmojiManager::getCodepoints() {
-  if (!dataLoaded)
-    loadEmojiData();
-  return allCodepoints;
+	if (!dataLoaded) {
+		loadEmojiData();
+	}
+	return allCodepoints;
 }
 
-void EmojiManager::onCategoryChanged(
-    const std::unordered_set<std::string> &keep) {
-  std::unique_lock<std::shared_mutex> lock(cacheMutex);
-  while (!priorityQueue.empty()) {
-    std::string hex = priorityQueue.back();
-    priorityQueue.pop_back();
-    backgroundQueue.push_front(hex);
-  }
+void EmojiManager::onCategoryChanged(const std::unordered_set<std::string> &keep) {
+	std::unique_lock<std::shared_mutex> lock(cacheMutex);
+	while (!priorityQueue.empty()) {
+		std::string hex = priorityQueue.back();
+		priorityQueue.pop_back();
+		backgroundQueue.push_front(hex);
+	}
 
-  for (auto it = twemojiCache.begin(); it != twemojiCache.end();) {
-    if (keep.find(it->first) == keep.end()) {
-      if (it->second.tex) {
-        C3D_TexDelete(it->second.tex);
-        free(it->second.tex);
-      }
-      it = twemojiCache.erase(it);
-    } else {
-      ++it;
-    }
-  }
+	for (auto it = twemojiCache.begin(); it != twemojiCache.end();) {
+		if (keep.find(it->first) == keep.end()) {
+			if (it->second.tex) {
+				C3D_TexDelete(it->second.tex);
+				free(it->second.tex);
+			}
+			it = twemojiCache.erase(it);
+		} else {
+			++it;
+		}
+	}
 }
 
 void EmojiManager::shutdown() {
-  std::unique_lock<std::shared_mutex> lock(cacheMutex);
-  for (auto &pair : emojiCache) {
-    if (pair.second.tex) {
-      C3D_TexDelete(pair.second.tex);
-      free(pair.second.tex);
-    }
-  }
-  for (auto &pair : twemojiCache) {
-    if (pair.second.tex) {
-      C3D_TexDelete(pair.second.tex);
-      free(pair.second.tex);
-    }
-  }
-  emojiCache.clear();
-  twemojiCache.clear();
-  priorityQueue.clear();
-  backgroundQueue.clear();
-  inQueue.clear();
-  dataLoaded = false;
+	std::unique_lock<std::shared_mutex> lock(cacheMutex);
+	for (auto &pair : emojiCache) {
+		if (pair.second.tex) {
+			C3D_TexDelete(pair.second.tex);
+			free(pair.second.tex);
+		}
+	}
+	for (auto &pair : twemojiCache) {
+		if (pair.second.tex) {
+			C3D_TexDelete(pair.second.tex);
+			free(pair.second.tex);
+		}
+	}
+	emojiCache.clear();
+	twemojiCache.clear();
+	priorityQueue.clear();
+	backgroundQueue.clear();
+	inQueue.clear();
+	dataLoaded = false;
 }
 
 EmojiManager::~EmojiManager() { shutdown(); }
 
 void EmojiManager::update() {
-  std::unique_lock<std::shared_mutex> lock(cacheMutex);
-  frameCounter++;
+	std::unique_lock<std::shared_mutex> lock(cacheMutex);
+	frameCounter++;
 
-  int processed = 0;
-  u64 startTick = svcGetSystemTick();
-  const u64 TICK_LIMIT = 268123 * 3.5;
+	int processed = 0;
+	u64 startTick = svcGetSystemTick();
+	const u64 TICK_LIMIT = 268123 * 3.5;
 
-  while (processed < 30) {
-    if (processed > 0 && (svcGetSystemTick() - startTick) > TICK_LIMIT)
-      break;
+	while (processed < 30) {
+		if (processed > 0 && (svcGetSystemTick() - startTick) > TICK_LIMIT) {
+			break;
+		}
 
-    std::string hex;
-    if (!priorityQueue.empty()) {
-      hex = priorityQueue.front();
-      priorityQueue.pop_front();
-    } else if (!backgroundQueue.empty()) {
-      hex = backgroundQueue.front();
-      backgroundQueue.pop_front();
-    } else {
-      break;
-    }
+		std::string hex;
+		if (!priorityQueue.empty()) {
+			hex = priorityQueue.front();
+			priorityQueue.pop_front();
+		} else if (!backgroundQueue.empty()) {
+			hex = backgroundQueue.front();
+			backgroundQueue.pop_front();
+		} else {
+			break;
+		}
 
-    inQueue.erase(hex);
+		inQueue.erase(hex);
 
-    auto it = twemojiCache.find(hex);
-    if (it != twemojiCache.end() && it->second.isLoading) {
-      lock.unlock();
+		auto it = twemojiCache.find(hex);
+		if (it != twemojiCache.end() && it->second.isLoading) {
+			lock.unlock();
 
-      std::string path = "romfs:/twemoji17/" + hex + ".png";
-      FILE *f = fopen(path.c_str(), "rb");
-      if (!f) {
-        std::string s = hex;
-        size_t p = 0;
-        while ((p = s.find("-fe0f")) != std::string::npos)
-          s.erase(p, 5);
-        if (s != hex) {
-          path = "romfs:/twemoji17/" + s + ".png";
-          f = fopen(path.c_str(), "rb");
-        }
-      }
+			std::string path = "romfs:/twemoji17/" + hex + ".png";
+			FILE *f = fopen(path.c_str(), "rb");
+			if (!f) {
+				std::string s = hex;
+				size_t p = 0;
+				while ((p = s.find("-fe0f")) != std::string::npos) {
+					s.erase(p, 5);
+				}
+				if (s != hex) {
+					path = "romfs:/twemoji17/" + s + ".png";
+					f = fopen(path.c_str(), "rb");
+				}
+			}
 
-      C3D_Tex *tex = nullptr;
-      int w = 0, h = 0;
-      if (f) {
-        fseek(f, 0, SEEK_END);
-        size_t size = ftell(f);
-        fseek(f, 0, SEEK_SET);
-        std::vector<unsigned char> buffer(size);
-        fread(buffer.data(), 1, size, f);
-        fclose(f);
-        tex = Utils::Image::loadTextureFromMemory(buffer.data(), size, w, h);
-      }
+			C3D_Tex *tex = nullptr;
+			int w = 0, h = 0;
+			if (f) {
+				fseek(f, 0, SEEK_END);
+				size_t size = ftell(f);
+				fseek(f, 0, SEEK_SET);
+				std::vector<unsigned char> buffer(size);
+				fread(buffer.data(), 1, size, f);
+				fclose(f);
+				tex = Utils::Image::loadTextureFromMemory(buffer.data(), size, w, h);
+			}
 
-      lock.lock();
-      auto it2 = twemojiCache.find(hex);
-      if (it2 != twemojiCache.end()) {
-        it2->second.tex = tex;
-        it2->second.originalW = w;
-        it2->second.originalH = h;
-        it2->second.isLoading = false;
-        it2->second.lastUsedFrame = frameCounter;
-      } else if (tex) {
-        C3D_TexDelete(tex);
-        free(tex);
-      }
-      processed++;
-    }
-  }
+			lock.lock();
+			auto it2 = twemojiCache.find(hex);
+			if (it2 != twemojiCache.end()) {
+				it2->second.tex = tex;
+				it2->second.originalW = w;
+				it2->second.originalH = h;
+				it2->second.isLoading = false;
+				it2->second.lastUsedFrame = frameCounter;
+			} else if (tex) {
+				C3D_TexDelete(tex);
+				free(tex);
+			}
+			processed++;
+		}
+	}
 
-  if (twemojiCache.size() > MAX_TWEMOJI_CACHE) {
-    while (twemojiCache.size() > MAX_TWEMOJI_CACHE - 50) {
-      uint32_t oldestFrame = 0xFFFFFFFF;
-      auto oldestIt = twemojiCache.end();
+	if (twemojiCache.size() > MAX_TWEMOJI_CACHE) {
+		while (twemojiCache.size() > MAX_TWEMOJI_CACHE - 50) {
+			uint32_t oldestFrame = 0xFFFFFFFF;
+			auto oldestIt = twemojiCache.end();
 
-      for (auto it = twemojiCache.begin(); it != twemojiCache.end(); ++it) {
-        if (it->second.lastUsedFrame < oldestFrame) {
-          oldestFrame = it->second.lastUsedFrame;
-          oldestIt = it;
-        }
-      }
+			for (auto it = twemojiCache.begin(); it != twemojiCache.end(); ++it) {
+				if (it->second.lastUsedFrame < oldestFrame) {
+					oldestFrame = it->second.lastUsedFrame;
+					oldestIt = it;
+				}
+			}
 
-      if (oldestIt != twemojiCache.end()) {
-        if (oldestIt->second.tex) {
-          C3D_TexDelete(oldestIt->second.tex);
-          free(oldestIt->second.tex);
-        }
-        twemojiCache.erase(oldestIt);
-      } else
-        break;
-    }
-  }
+			if (oldestIt != twemojiCache.end()) {
+				if (oldestIt->second.tex) {
+					C3D_TexDelete(oldestIt->second.tex);
+					free(oldestIt->second.tex);
+				}
+				twemojiCache.erase(oldestIt);
+			} else {
+				break;
+			}
+		}
+	}
 }
 
 EmojiManager::EmojiInfo EmojiManager::getEmojiInfo(const std::string &emojiId) {
-  std::shared_lock<std::shared_mutex> lock(cacheMutex);
-  auto it = emojiCache.find(emojiId);
-  if (it != emojiCache.end()) {
-    it->second.lastUsedFrame = frameCounter;
-    return it->second;
-  }
-  return EmojiInfo();
+	std::shared_lock<std::shared_mutex> lock(cacheMutex);
+	auto it = emojiCache.find(emojiId);
+	if (it != emojiCache.end()) {
+		it->second.lastUsedFrame = frameCounter;
+		return it->second;
+	}
+	return EmojiInfo();
 }
 
 void EmojiManager::prefetchEmoji(const std::string &emojiId) {
-  if (emojiId.empty())
-    return;
-  {
-    std::unique_lock<std::shared_mutex> lock(cacheMutex);
-    if (emojiCache.count(emojiId))
-      return;
-    EmojiInfo placeholder;
-    placeholder.isLoading = true;
-    emojiCache[emojiId] = placeholder;
-  }
+	if (emojiId.empty()) {
+		return;
+	}
+	{
+		std::unique_lock<std::shared_mutex> lock(cacheMutex);
+		if (emojiCache.count(emojiId)) {
+			return;
+		}
+		EmojiInfo placeholder;
+		placeholder.isLoading = true;
+		emojiCache[emojiId] = placeholder;
+	}
 
-  std::string url =
-      "https://media.discordapp.net/emojis/" + emojiId + ".png?size=32";
-  Network::NetworkManager::getInstance().enqueue(
-      url, "GET", "", Network::RequestPriority::INTERACTIVE,
-      [this, emojiId](const Network::HttpResponse &resp) {
-        if (resp.statusCode == 200 && !resp.body.empty()) {
-          int w, h;
-          C3D_Tex *tex = Utils::Image::loadTextureFromMemory(
-              (const unsigned char *)resp.body.data(), resp.body.size(), w, h);
-          if (tex) {
-            std::unique_lock<std::shared_mutex> lock(cacheMutex);
-            EmojiInfo info;
-            info.tex = tex;
-            info.originalW = w;
-            info.originalH = h;
-            info.lastUsedFrame = frameCounter;
-            info.isLoading = false;
-            emojiCache[emojiId] = info;
-          }
-        }
-      });
+	std::string url = "https://media.discordapp.net/emojis/" + emojiId + ".png?size=32";
+	Network::NetworkManager::getInstance().enqueue(
+	    url, "GET", "", Network::RequestPriority::INTERACTIVE, [this, emojiId](const Network::HttpResponse &resp) {
+		    if (resp.statusCode == 200 && !resp.body.empty()) {
+			    int w, h;
+			    C3D_Tex *tex = Utils::Image::loadTextureFromMemory((const unsigned char *)resp.body.data(),
+			                                                       resp.body.size(), w, h);
+			    if (tex) {
+				    std::unique_lock<std::shared_mutex> lock(cacheMutex);
+				    EmojiInfo info;
+				    info.tex = tex;
+				    info.originalW = w;
+				    info.originalH = h;
+				    info.lastUsedFrame = frameCounter;
+				    info.isLoading = false;
+				    emojiCache[emojiId] = info;
+			    }
+		    }
+	    });
 }
 
 void EmojiManager::prefetchEmojisFromText(const std::string &text) {
-  for (size_t cursor = 0; cursor < text.length(); ++cursor) {
-    if (text[cursor] != '<')
-      continue;
-    if (cursor + 6 >= text.length())
-      continue;
-    bool isAnimated = (text[cursor + 1] == 'a');
-    if (text[cursor + 1] != ':' && !isAnimated)
-      continue;
-    size_t startPos = cursor + (isAnimated ? 3 : 2);
-    size_t secondColon = text.find(':', startPos);
-    if (secondColon == std::string::npos)
-      continue;
-    size_t closeBracket = text.find('>', secondColon);
-    if (closeBracket == std::string::npos)
-      continue;
-    std::string emojiId =
-        text.substr(secondColon + 1, closeBracket - secondColon - 1);
-    if (!emojiId.empty())
-      prefetchEmoji(emojiId);
-    cursor = closeBracket;
-  }
+	for (size_t cursor = 0; cursor < text.length(); ++cursor) {
+		if (text[cursor] != '<') {
+			continue;
+		}
+		if (cursor + 6 >= text.length()) {
+			continue;
+		}
+		bool isAnimated = (text[cursor + 1] == 'a');
+		if (text[cursor + 1] != ':' && !isAnimated) {
+			continue;
+		}
+		size_t startPos = cursor + (isAnimated ? 3 : 2);
+		size_t secondColon = text.find(':', startPos);
+		if (secondColon == std::string::npos) {
+			continue;
+		}
+		size_t closeBracket = text.find('>', secondColon);
+		if (closeBracket == std::string::npos) {
+			continue;
+		}
+		std::string emojiId = text.substr(secondColon + 1, closeBracket - secondColon - 1);
+		if (!emojiId.empty()) {
+			prefetchEmoji(emojiId);
+		}
+		cursor = closeBracket;
+	}
 }
 
-EmojiManager::EmojiInfo
-EmojiManager::getTwemojiInfo(const std::string &codepointHex) {
-  std::unique_lock<std::shared_mutex> lock(cacheMutex);
-  auto it = twemojiCache.find(codepointHex);
+EmojiManager::EmojiInfo EmojiManager::getTwemojiInfo(const std::string &codepointHex) {
+	std::unique_lock<std::shared_mutex> lock(cacheMutex);
+	auto it = twemojiCache.find(codepointHex);
 
-  if (it != twemojiCache.end()) {
-    it->second.lastUsedFrame = frameCounter;
-    if (!it->second.isLoading)
-      return it->second;
+	if (it != twemojiCache.end()) {
+		it->second.lastUsedFrame = frameCounter;
+		if (!it->second.isLoading) {
+			return it->second;
+		}
 
-    if (inQueue.find(codepointHex) == inQueue.end()) {
-      priorityQueue.push_back(codepointHex);
-      inQueue.insert(codepointHex);
-    }
-    return it->second;
-  }
+		if (inQueue.find(codepointHex) == inQueue.end()) {
+			priorityQueue.push_back(codepointHex);
+			inQueue.insert(codepointHex);
+		}
+		return it->second;
+	}
 
-  EmojiInfo pending;
-  pending.isLoading = true;
-  pending.lastUsedFrame = frameCounter;
-  twemojiCache[codepointHex] = pending;
+	EmojiInfo pending;
+	pending.isLoading = true;
+	pending.lastUsedFrame = frameCounter;
+	twemojiCache[codepointHex] = pending;
 
-  priorityQueue.push_back(codepointHex);
-  inQueue.insert(codepointHex);
+	priorityQueue.push_back(codepointHex);
+	inQueue.insert(codepointHex);
 
-  return pending;
+	return pending;
 }
 
 } // namespace UI

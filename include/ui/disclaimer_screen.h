@@ -7,17 +7,17 @@
 namespace UI {
 
 class DisclaimerScreen : public Screen {
-public:
-  DisclaimerScreen();
-  ~DisclaimerScreen() override = default;
+  public:
+	DisclaimerScreen();
+	~DisclaimerScreen() override = default;
 
-  void update() override;
-  void renderTop(C3D_RenderTarget *target) override;
-  void renderBottom(C3D_RenderTarget *target) override;
-  void onEnter() override;
+	void update() override;
+	void renderTop(C3D_RenderTarget *target) override;
+	void renderBottom(C3D_RenderTarget *target) override;
+	void onEnter() override;
 
-private:
-  static const std::string DISCLAIMER_TEXT;
+  private:
+	static const std::string DISCLAIMER_TEXT;
 };
 
 } // namespace UI
