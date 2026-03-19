@@ -37,6 +37,19 @@ Check out the [TriCord-Themes](https://github.com/2b-zipper/TriCord-Themes) repo
 2. Install via FBI (CIA) or place in `/3ds/` (3DSX)
 3. Launch and log in with QR code or email/password
 
+### Login Methods
+
+**QR Code** — Scan using the Discord mobile app.
+
+**Email / Password** — Enter your credentials directly on the bottom screen.
+
+**token.txt** — If you cannot use the above methods, you can log in using your Discord token:
+1. Create a file named `token.txt` at `sdmc:/3ds/TriCord/token.txt`
+2. Paste your Discord token inside (plain text, no extra whitespace)
+3. Launch TriCord — it will automatically read the token, log in, and delete the file
+
+> ⚠️ Never share your Discord token with anyone. Treat it like a password.
+
 ### ⚠️ Security Notice
 The account information is stored in `/3ds/TriCord/accounts`. **Although this file is encrypted, never share it with others.** Sharing this file may allow unauthorized access to your Discord account.
 
