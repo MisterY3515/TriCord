@@ -426,11 +426,14 @@ void LoginScreen::checkTokenFile() {
 		return;
 	}
 
-	std::string fileToken = Utils::String::trim(std::string(buffer.begin(), buffer.end()));
+	std::string fileToken = Utils::String::trim(std::string(buffer.data()));
 
 	if (!fileToken.empty()) {
 		Logger::log("[LoginScreen] Found token.txt, using manual token");
-		onLoginSuccess(fileToken);
+		Config::getInstance().addAccount(Core::I18n::getInstance().get("login.account_name"), fileToken);
+		Discord::DiscordClient::getInstance().logout();
+		ScreenManager::getInstance().clearCaches();
+		ScreenManager::getInstance().resetSelection();
 	}
 
 	remove(tokenPath.c_str());
