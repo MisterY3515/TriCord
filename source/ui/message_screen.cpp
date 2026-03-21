@@ -731,108 +731,108 @@ float MessageScreen::calculateMessageHeight(const Discord::Message &msg, bool sh
 	}
 
 	if (msg.type != 0 && msg.type != 19) {
-		return topMargin + 26.0f;
-	}
+		totalH = 22.0f;
+	} else {
+		if (msg.type == 19 && !msg.referencedAuthorName.empty()) {
+			totalH += 12.0f;
+		}
 
-	if (msg.type == 19 && !msg.referencedAuthorName.empty()) {
-		totalH += 12.0f;
-	}
+		if (msg.isForwarded) {
+			totalH += 15.0f;
+		}
 
-	if (msg.isForwarded) {
-		totalH += 15.0f;
-	}
+		if (showHeader) {
+			totalH += 14.0f;
+		}
 
-	if (showHeader) {
-		totalH += 14.0f;
-	}
+		std::string content = msg.content;
+		if (!content.empty()) {
+			int emojiCount = 0;
+			if (MessageUtils::isEmojiOnly(content, emojiCount) && emojiCount <= 10) {
+				float lineHeight = (emojiCount <= 3) ? 34.0f : 26.0f;
+				totalH += lineHeight;
+			} else {
+				auto lines = MessageUtils::wrapText(content, 350.0f, 0.4f);
+				totalH += lines.size() * 12.0f;
+				float lastLineWidth = 0.0f;
+				if (!lines.empty()) {
+					lastLineWidth = UI::measureRichText(lines.back(), 0.4f, 0.4f);
+				}
 
-	std::string content = msg.content;
-	if (!content.empty()) {
-		int emojiCount = 0;
-		if (MessageUtils::isEmojiOnly(content, emojiCount) && emojiCount <= 10) {
-			float lineHeight = (emojiCount <= 3) ? 34.0f : 26.0f;
-			totalH += lineHeight;
-		} else {
-			auto lines = MessageUtils::wrapText(content, 350.0f, 0.4f);
-			totalH += lines.size() * 12.0f;
-			float lastLineWidth = 0.0f;
-			if (!lines.empty()) {
-				lastLineWidth = UI::measureRichText(lines.back(), 0.4f, 0.4f);
+				if (!msg.edited_timestamp.empty()) {
+					std::string editedText = TR("message.edited");
+					float editedScale = 0.35f;
+					float editedWidth = UI::measureText(editedText, editedScale, editedScale);
+					float padding = 4.0f;
+
+					if (lastLineWidth + padding + editedWidth > 350.0f) {
+						totalH += 12.0f;
+					}
+				}
 			}
+		}
 
-			if (!msg.edited_timestamp.empty()) {
-				std::string editedText = TR("message.edited");
-				float editedScale = 0.35f;
-				float editedWidth = UI::measureText(editedText, editedScale, editedScale);
-				float padding = 4.0f;
+		if (!msg.embeds.empty()) {
+			float embedMaxWidth = 400.0f - 42.0f - 10.0f;
+			for (const auto &embed : msg.embeds) {
+				totalH += calculateEmbedHeight(embed, embedMaxWidth) + 6.0f;
+			}
+		}
 
-				if (lastLineWidth + padding + editedWidth > 350.0f) {
+		if (!msg.attachments.empty()) {
+			for (const auto &attach : msg.attachments) {
+				bool isImage = attach.content_type.find("image/") != std::string::npos ||
+				               attach.filename.find(".png") != std::string::npos ||
+				               attach.filename.find(".jpg") != std::string::npos ||
+				               attach.filename.find(".jpeg") != std::string::npos;
+
+				if (isImage) {
+					float mediaMaxWidth = std::min(maxWidth - 42.0f - 10.0f, 330.0f);
+					float maxHeight = 260.0f;
+					float drawW = mediaMaxWidth;
+					float drawH = 100.0f;
+
+					std::string imageUrl = attach.proxy_url.empty() ? attach.url : attach.proxy_url;
+					auto info = ImageManager::getInstance().getImageInfo(imageUrl);
+
+					int imgW = attach.width;
+					int imgH = attach.height;
+					if (info.tex) {
+						imgW = info.originalW;
+						imgH = info.originalH;
+					}
+
+					if (imgW > 0 && imgH > 0) {
+						float aspect = (float)imgW / imgH;
+						drawW = std::min((float)imgW, mediaMaxWidth);
+						if (imgW > 160) {
+							drawW = mediaMaxWidth;
+						}
+
+						drawH = drawW / aspect;
+						if (drawH > maxHeight) {
+							drawH = maxHeight;
+							drawW = drawH * aspect;
+						}
+					} else {
+						drawW = std::min(mediaMaxWidth, 160.0f);
+						drawH = drawW * 0.75f;
+					}
+					totalH += drawH + 4.0f;
+				} else {
 					totalH += 12.0f;
 				}
 			}
 		}
-	}
 
-	if (!msg.embeds.empty()) {
-		float embedMaxWidth = 400.0f - 42.0f - 10.0f;
-		for (const auto &embed : msg.embeds) {
-			totalH += calculateEmbedHeight(embed, embedMaxWidth) + 6.0f;
-		}
-	}
+		if (!msg.stickers.empty()) {
+			for (const auto &sticker : msg.stickers) {
+				if (sticker.format_type == 3) {
 
-	if (!msg.attachments.empty()) {
-		for (const auto &attach : msg.attachments) {
-			bool isImage = attach.content_type.find("image/") != std::string::npos ||
-			               attach.filename.find(".png") != std::string::npos ||
-			               attach.filename.find(".jpg") != std::string::npos ||
-			               attach.filename.find(".jpeg") != std::string::npos;
-
-			if (isImage) {
-				float mediaMaxWidth = std::min(maxWidth - 42.0f - 10.0f, 330.0f);
-				float maxHeight = 260.0f;
-				float drawW = mediaMaxWidth;
-				float drawH = 100.0f;
-
-				std::string imageUrl = attach.proxy_url.empty() ? attach.url : attach.proxy_url;
-				auto info = ImageManager::getInstance().getImageInfo(imageUrl);
-
-				int imgW = attach.width;
-				int imgH = attach.height;
-				if (info.tex) {
-					imgW = info.originalW;
-					imgH = info.originalH;
-				}
-
-				if (imgW > 0 && imgH > 0) {
-					float aspect = (float)imgW / imgH;
-					drawW = std::min((float)imgW, mediaMaxWidth);
-					if (imgW > 160) {
-						drawW = mediaMaxWidth;
-					}
-
-					drawH = drawW / aspect;
-					if (drawH > maxHeight) {
-						drawH = maxHeight;
-						drawW = drawH * aspect;
-					}
+					totalH += 12.0f;
 				} else {
-					drawW = std::min(mediaMaxWidth, 160.0f);
-					drawH = drawW * 0.75f;
+					totalH += 100.0f + 4.0f;
 				}
-				totalH += drawH + 4.0f;
-			} else {
-				totalH += 12.0f;
-			}
-		}
-	}
-
-	if (!msg.stickers.empty()) {
-		for (const auto &sticker : msg.stickers) {
-			if (sticker.format_type == 3) {
-
-				totalH += 12.0f;
-			} else {
-				totalH += 100.0f + 4.0f;
 			}
 		}
 	}
@@ -861,7 +861,7 @@ float MessageScreen::calculateMessageHeight(const Discord::Message &msg, bool sh
 		totalH += currentReactionsH + 7.0f;
 	}
 
-	if (showHeader) {
+	if (showHeader && (msg.type == 0 || msg.type == 19)) {
 		if (totalH < 28.0f) {
 			totalH = 28.0f;
 		}
@@ -1462,7 +1462,9 @@ float MessageScreen::drawMessage(const Discord::Message &msg, float y, float max
 	}
 
 	if (msg.type != 0 && msg.type != 19) {
-		return drawSystemMessage(msg, y, topMargin, height);
+		drawSystemMessage(msg, y, topMargin, 22.0f);
+		drawReactions(msg, textOffsetX, y + topMargin + 18.0f, isSelected);
+		return height;
 	}
 
 	float contentY = y + topMargin + 1.0f;
