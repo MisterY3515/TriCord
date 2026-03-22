@@ -535,13 +535,10 @@ void MessageScreen::update() {
 							if (!embed.thumbnail_proxy_url.empty()) {
 								ImageManager::getInstance().clearFailed(embed.thumbnail_proxy_url);
 							}
-							if (embed.image_url.empty()) {
-								std::string mediaUrl =
-								    embed.thumbnail_proxy_url.empty() ? embed.thumbnail_url : embed.thumbnail_proxy_url;
-								ImageManager::getInstance().prefetch(mediaUrl, embed.thumbnail_width,
-								                                     embed.thumbnail_height);
-							}
-							ImageManager::getInstance().prefetch(embed.thumbnail_url);
+							std::string thumbUrl =
+							    embed.thumbnail_proxy_url.empty() ? embed.thumbnail_url : embed.thumbnail_proxy_url;
+							ImageManager::getInstance().prefetch(thumbUrl, embed.thumbnail_width,
+							                                     embed.thumbnail_height);
 						}
 					}
 				}
@@ -2282,6 +2279,33 @@ float MessageScreen::renderEmbed(const Discord::Embed &embed, float x, float y, 
 		}
 	} else if (!isSimpleMedia) {
 		currentY += 5.0f;
+	}
+
+	if (showThumbnailOnRight) {
+		std::string thumbUrl = !embed.thumbnail_proxy_url.empty() ? embed.thumbnail_proxy_url : embed.thumbnail_url;
+		float thumbMaxSize = 64.0f;
+		float thumbX = x + maxWidth - thumbMaxSize - 4.0f;
+		float thumbY = y + 5.0f;
+		auto thumbInfo = ImageManager::getInstance().getImageInfo(thumbUrl);
+		if (thumbInfo.tex) {
+			float scaleX = thumbMaxSize / thumbInfo.originalW;
+			float scaleY = thumbMaxSize / thumbInfo.originalH;
+			float scale = std::min(scaleX, scaleY);
+			float uMax = (float)thumbInfo.originalW / thumbInfo.tex->width;
+			float vMax = (float)thumbInfo.originalH / thumbInfo.tex->height;
+			Tex3DS_SubTexture subtex = {
+			    (u16)thumbInfo.originalW, (u16)thumbInfo.originalH, 0.0f, 1.0f, uMax, 1.0f - vMax};
+			C2D_Image img = {thumbInfo.tex, &subtex};
+			C2D_DrawImageAt(img, thumbX, thumbY, 0.49f, nullptr, scale, scale);
+		} else if (thumbInfo.failed) {
+			C2D_DrawRectSolid(thumbX, thumbY, 0.49f, thumbMaxSize, thumbMaxSize, C2D_Color32(60, 40, 40, 255));
+		} else {
+			ImageManager::getInstance().prefetch(thumbUrl, embed.thumbnail_width, embed.thumbnail_height,
+			                                     Network::RequestPriority::INTERACTIVE);
+			C2D_DrawRectSolid(thumbX, thumbY, 0.49f, thumbMaxSize, thumbMaxSize, ScreenManager::colorEmbedMedia());
+			drawText(thumbX + 4.0f, thumbY + (thumbMaxSize / 2) - 5.0f, 0.5f, 0.28f, 0.28f,
+			         ScreenManager::colorTextMuted(), TR("common.loading"));
+		}
 	}
 
 	if (hasImage || (isMedia && hasThumbnail)) {
