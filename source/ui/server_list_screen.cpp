@@ -864,6 +864,7 @@ void ServerListScreen::renderBottom(C3D_RenderTarget *target) {
 	if (!infoDrawn) {
 		std::string title = (state == State::SELECTING_SERVER) ? TR("server.select") : TR("channel.select");
 		drawText(35.0f, 8.5f, 0.5f, 0.55f, 0.55f, ScreenManager::colorText(), title);
+		C2D_DrawRectSolid(10, 32, 0.5f, 320 - 20, 1, ScreenManager::colorSeparator());
 	}
 
 	if (state == State::SELECTING_SERVER) {
