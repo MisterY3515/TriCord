@@ -13,7 +13,7 @@ jobs:
     
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install system tools
         run: |
@@ -61,7 +61,7 @@ jobs:
         run: make
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: TriCord-build
           path: |
