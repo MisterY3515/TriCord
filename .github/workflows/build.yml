@@ -27,10 +27,12 @@ jobs:
           cp makerom /usr/local/bin/
           chmod +x /usr/local/bin/makerom
           
-          git clone --recursive https://github.com/Steveice10/bannertool.git
-          cd bannertool
+          wget -q https://github.com/carstene1ns/3ds-bannertool/archive/refs/heads/master.zip -O bannertool-src.zip
+          unzip -q bannertool-src.zip
+          cd 3ds-bannertool-master
           make
-          cp bannertool /usr/local/bin/
+          cp output/linux-x86_64/bannertool /usr/local/bin/ || cp bannertool /usr/local/bin/
+          chmod +x /usr/local/bin/bannertool
           cd ..
 
       - name: Build
