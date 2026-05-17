@@ -23,7 +23,8 @@ enum class ScreenType {
 	DM_LIST,
 	ABOUT,
 	DISCLAIMER,
-	THEME_MANAGER
+	THEME_MANAGER,
+	VOICE_CALL
 };
 
 class Screen {

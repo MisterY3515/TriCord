@@ -13,7 +13,7 @@ AudioManager &AudioManager::getInstance() {
 AudioManager::AudioManager() : currentPlayBuf(0), micBuffer(nullptr), micBufSize(0), capturing(false), lastMicPos(0), ndspReady(false) {
 	// Size for ~40ms of 16kHz mono audio (16kHz * 2 bytes * 0.04 = 1280 bytes)
 	playbackBufferSize = 16000 * 2 * 0.04;
-	for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < NUM_WAVE_BUFS; i++) {
 		playbackBuffer[i] = (int16_t *)linearAlloc(playbackBufferSize);
 		memset(playbackBuffer[i], 0, playbackBufferSize);
 		memset(&waveBuf[i], 0, sizeof(ndspWaveBuf));
@@ -25,7 +25,7 @@ AudioManager::AudioManager() : currentPlayBuf(0), micBuffer(nullptr), micBufSize
 
 AudioManager::~AudioManager() {
 	shutdown();
-	for (int i = 0; i < 2; i++) {
+	for (int i = 0; i < NUM_WAVE_BUFS; i++) {
 		if (playbackBuffer[i]) linearFree(playbackBuffer[i]);
 	}
 }
@@ -61,7 +61,10 @@ void AudioManager::init() {
 
 void AudioManager::shutdown() {
 	stopCapture();
-	if (ndspReady) ndspExit();
+	if (ndspReady) {
+		ndspChnWaveBufClear(0);
+		ndspExit();
+	}
 	if (micBuffer) micExit();
 	if (micBuffer) {
 		linearFree(micBuffer);
@@ -80,7 +83,7 @@ void AudioManager::queuePcm(const int16_t *pcm, size_t samples) {
 		waveBuf[currentPlayBuf].nsamples = bytesToCopy / 2;
 		DSP_FlushDataCache(playbackBuffer[currentPlayBuf], bytesToCopy);
 		ndspChnWaveBufAdd(0, &waveBuf[currentPlayBuf]);
-		currentPlayBuf = (currentPlayBuf + 1) % 2;
+		currentPlayBuf = (currentPlayBuf + 1) % NUM_WAVE_BUFS;
 	}
 }
 

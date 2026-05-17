@@ -159,6 +159,7 @@ class DiscordClient {
 	Member getMember(const std::string &guildId, const std::string &userId);
 	int getRoleColor(const std::string &guildId, const Member &member);
 	int getRoleColor(const std::string &guildId, const std::string &userId);
+	std::vector<std::string> getUsersInVoiceChannel(const std::string &channelId);
 	std::string getMemberDisplayName(const std::string &guildId, const std::string &userId, const User &user);
 	std::string getGuildIdFromChannel(const std::string &channelId);
 
@@ -178,6 +179,9 @@ class DiscordClient {
   private:
 	DiscordClient();
 	~DiscordClient();
+
+	// Map of ChannelID -> vector of UserID
+	std::map<std::string, std::vector<std::string>> channelVoiceStates;
 
 	void workerLoop();
 	void sendHeartbeat();

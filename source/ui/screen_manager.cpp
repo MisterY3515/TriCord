@@ -17,6 +17,7 @@
 #include "ui/settings_screen.h"
 #include "ui/text_measure_cache.h"
 #include "ui/theme_manager_screen.h"
+#include "ui/voice_screen.h"
 #include "utils/message_utils.h"
 #include "utils/utf8_utils.h"
 #include <cmath>
@@ -170,6 +171,9 @@ void ScreenManager::setScreen(ScreenType type) {
 	case ScreenType::THEME_MANAGER:
 		currentScreen = std::make_unique<ThemeManagerScreen>();
 		break;
+	case ScreenType::VOICE_CALL:
+		currentScreen = std::make_unique<VoiceScreen>();
+		break;
 	}
 
 	if (currentScreen) {
@@ -212,9 +216,17 @@ void ScreenManager::update() {
 	u32 kDown = hidKeysDown();
 	u32 kHeld = hidKeysHeld();
 
-	if (kDown & KEY_START) {
+	if ((kHeld & KEY_SELECT) && (kHeld & KEY_START) && (kDown & KEY_B)) {
 		appExitRequested = true;
 		return;
+	}
+
+	if ((kDown & KEY_START) && Discord::VoiceClient::getInstance().isConnected()) {
+		if (currentType == ScreenType::VOICE_CALL) {
+			returnToPreviousScreen();
+		} else {
+			pushScreen(ScreenType::VOICE_CALL);
+		}
 	}
 
 	bool shouldBlockScreen = !hamburgerMenu.isClosed();
@@ -253,7 +265,7 @@ void ScreenManager::update() {
 			vc.leaveChannel();
 			showToast("Left voice channel");
 		}
-	} else if (kDown & KEY_R) {
+	} else if (kDown & KEY_X) {
 		auto &vc = Discord::VoiceClient::getInstance();
 		if (vc.isInChannel()) {
 			vc.setMuted(!vc.isMuted());
@@ -347,7 +359,7 @@ void ScreenManager::renderVoiceOverlay() {
 	C2D_DrawRectSolid(0.0f, barY, 0.9f, halfW, barH, muteColor);
 	C2D_DrawRectSolid(0.0f, barY, 0.91f, halfW, 1.0f, C2D_Color32(255, 255, 255, 100)); // highlight
 	
-	std::string muteStr = vc.isMuted() ? "\uE004 Unmute" : "\uE004 Mute";
+	std::string muteStr = vc.isMuted() ? "\uE002 Unmute" : "\uE002 Mute";
 	C2D_Text mText;
 	C2D_TextParse(&mText, textBuf, muteStr.c_str());
 	C2D_TextOptimize(&mText);
