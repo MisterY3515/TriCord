@@ -247,6 +247,12 @@ void ScreenManager::update() {
 	if ((kHeld & KEY_L) && (kDown & KEY_R)) {
 		toggleDebugOverlay();
 		Logger::log("Debug overlay toggled: %s", debugOverlayEnabled ? "ON" : "OFF");
+	} else if ((kHeld & KEY_L) && (kDown & KEY_B)) {
+		auto &vc = Discord::VoiceClient::getInstance();
+		if (vc.isInChannel()) {
+			vc.leaveChannel();
+			showToast("Left voice channel");
+		}
 	} else if (kDown & KEY_R) {
 		auto &vc = Discord::VoiceClient::getInstance();
 		if (vc.isInChannel()) {
@@ -310,19 +316,29 @@ void ScreenManager::render() {
 void ScreenManager::renderVoiceOverlay() {
 	auto &vc = Discord::VoiceClient::getInstance();
 	
-	// Draw a persistent green bar at the very bottom
-	float barH = 20.0f;
+	// Draw a persistent bar at the very bottom
+	float barH = 22.0f;
 	float barY = BOTTOM_SCREEN_HEIGHT - barH;
-	C2D_DrawRectSolid(0.0f, barY, 0.9f, BOTTOM_SCREEN_WIDTH, barH, colorAccent());
 	
-	std::string status = "\uE008 Voice Connected";
-	if (vc.isMuted()) status += " (Muted)";
+	u32 barColor = vc.isMuted() ? C2D_Color32(200, 60, 60, 255) : colorAccent();
+	C2D_DrawRectSolid(0.0f, barY, 0.9f, BOTTOM_SCREEN_WIDTH, barH, barColor);
+	
+	// Left side: status
+	std::string status = vc.isMuted() ? "Muted" : "Voice Connected";
 	
 	C2D_Text text;
 	C2D_TextParse(&text, textBuf, status.c_str());
 	C2D_TextOptimize(&text);
+	C2D_DrawText(&text, C2D_WithColor, 5.0f, barY + 4.0f, 0.95f, 0.42f, 0.42f, C2D_Color32(255, 255, 255, 255));
 	
-	C2D_DrawText(&text, C2D_WithColor, 5.0f, barY + 3.0f, 0.95f, 0.45f, 0.45f, C2D_Color32(255, 255, 255, 255));
+	// Right side: controls
+	std::string controls = "\uE004:Mute  \uE054+\uE001:Leave";
+	C2D_Text ctrlText;
+	C2D_TextParse(&ctrlText, textBuf, controls.c_str());
+	C2D_TextOptimize(&ctrlText);
+	float ctrlW = 0, ctrlH = 0;
+	C2D_TextGetDimensions(&ctrlText, 0.38f, 0.38f, &ctrlW, &ctrlH);
+	C2D_DrawText(&ctrlText, C2D_WithColor, BOTTOM_SCREEN_WIDTH - ctrlW - 5.0f, barY + 5.0f, 0.95f, 0.38f, 0.38f, C2D_Color32(255, 255, 255, 200));
 }
 
 void ScreenManager::toggleDebugOverlay() { debugOverlayEnabled = !debugOverlayEnabled; }

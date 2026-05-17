@@ -73,6 +73,11 @@ class VoiceClient {
 	bool muted;
 	bool deafened;
 
+	int heartbeatInterval;
+	uint64_t lastHeartbeatTime;
+
+	std::vector<int16_t> micAccumulator;
+
 	// Funzioni di supporto
 	void handleVoiceWsMessage(std::string &msg);
 	void connectVoiceWebSocket();

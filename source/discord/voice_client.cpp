@@ -43,7 +43,7 @@ VoiceClient &VoiceClient::getInstance() {
 
 VoiceClient::VoiceClient()
     : state(State::DISCONNECTED), ssrc(0), decoder(nullptr), encoder(nullptr), sequence(0), timestamp(0), muted(false),
-      deafened(false) {
+      deafened(false), heartbeatInterval(0), lastHeartbeatTime(0) {
 	voiceWs.setOnMessage([this](std::string &msg) { handleVoiceWsMessage(msg); });
 	voiceWs.setOnError([](const std::string &err) { Logger::log("[Voice] WS Error: %s", err.c_str()); });
 	voiceWs.setOnClose([this](int code, const std::string &reason) {
@@ -101,6 +101,9 @@ void VoiceClient::leaveChannel() {
 	voiceToken.clear();
 	voiceEndpoint.clear();
 	voiceSessionId.clear();
+	micAccumulator.clear();
+	heartbeatInterval = 0;
+	lastHeartbeatTime = 0;
 }
 
 bool VoiceClient::isConnected() const { return state == State::READY; }
@@ -185,7 +188,11 @@ void VoiceClient::handleVoiceWsMessage(std::string &msg) {
 		}
 		break;
 	case 8: // Hello
-		Logger::log("[Voice] Received Hello");
+		if (data.HasMember("heartbeat_interval")) {
+			heartbeatInterval = data["heartbeat_interval"].GetInt();
+			lastHeartbeatTime = osGetTime();
+			Logger::log("[Voice] Received Hello, heartbeat interval: %d ms", heartbeatInterval);
+		}
 		sendVoiceIdentify();
 		break;
 	case 4: // Session Description
@@ -276,6 +283,24 @@ void VoiceClient::update() {
 	if (state != State::DISCONNECTED && state != State::WAITING_SERVER) {
 		voiceWs.poll();
 		
+		// Heartbeat WS (keep connection alive)
+		if (heartbeatInterval > 0) {
+			uint64_t now = osGetTime();
+			if (now - lastHeartbeatTime >= (uint64_t)heartbeatInterval) {
+				lastHeartbeatTime = now;
+				rapidjson::Document d;
+				d.SetObject();
+				auto &alloc = d.GetAllocator();
+				d.AddMember("op", 3, alloc); // Heartbeat
+				d.AddMember("d", rapidjson::Value(std::to_string(now).c_str(), alloc), alloc);
+				
+				rapidjson::StringBuffer buffer;
+				rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+				d.Accept(writer);
+				voiceWs.send(buffer.GetString());
+			}
+		}
+		
 		if (state == State::DISCOVERING_IP) {
 			uint8_t buf[74];
 			int len = udp.recv(buf, sizeof(buf), 0); // Non-blocking
@@ -286,10 +311,10 @@ void VoiceClient::update() {
 				sendSelectProtocol(myIp, myPort);
 			}
 		} else if (state == State::READY) {
-			// Ricevi e processa pacchetti audio
+			// Ricevi e processa TUTTI i pacchetti audio in coda (UDP)
 			uint8_t buf[2048];
-			int len = udp.recv(buf, sizeof(buf), 0);
-			if (len > 12) {
+			int len;
+			while ((len = udp.recv(buf, sizeof(buf), 0)) > 12) {
 				std::vector<uint8_t> decrypted;
 				if (decryptAudioPacket(buf, len, decrypted)) {
 					// Audio decriptato, ora va decodificato
@@ -303,17 +328,26 @@ void VoiceClient::update() {
 
 			// Invio pacchetti audio
 			if (!muted) {
-				int16_t micBuf[320]; // 20ms a 16kHz
 				if (Audio::AudioManager::getInstance().hasNewSamples()) {
-					size_t read = Audio::AudioManager::getInstance().readSamples(micBuf, 320);
-					if (read == 320) {
-						uint8_t opusBuf[1024];
-						int encodedLen = opus_encode(encoder, micBuf, 320, opusBuf, sizeof(opusBuf));
-						if (encodedLen > 0) {
-							std::vector<uint8_t> encrypted;
-							encryptAudioPacket(opusBuf, encodedLen, encrypted);
-							udp.send(encrypted.data(), encrypted.size());
-						}
+					int16_t tempBuf[1024];
+					size_t read = Audio::AudioManager::getInstance().readSamples(tempBuf, 1024);
+					if (read > 0) {
+						micAccumulator.insert(micAccumulator.end(), tempBuf, tempBuf + read);
+					}
+				}
+				
+				// Invia in blocchi da 20ms (320 samples a 16kHz)
+				while (micAccumulator.size() >= 320) {
+					int16_t micBuf[320];
+					std::copy(micAccumulator.begin(), micAccumulator.begin() + 320, micBuf);
+					micAccumulator.erase(micAccumulator.begin(), micAccumulator.begin() + 320);
+					
+					uint8_t opusBuf[1024];
+					int encodedLen = opus_encode(encoder, micBuf, 320, opusBuf, sizeof(opusBuf));
+					if (encodedLen > 0) {
+						std::vector<uint8_t> encrypted;
+						encryptAudioPacket(opusBuf, encodedLen, encrypted);
+						udp.send(encrypted.data(), encrypted.size());
 					}
 				}
 			}
