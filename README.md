@@ -1,4 +1,8 @@
-# TriCord
+# TriCord Revanced
+
+## Warning
+> This project is a speriment where I try to re-optimize this program
+
 ![License](https://img.shields.io/badge/license-GPLv3-green)
 ![Platform](https://img.shields.io/badge/platform-Nintendo%203DS-red)
 ![Downloads](https://img.shields.io/github/downloads/2b-zipper/TriCord/total?style=flat&color=blue)
