@@ -85,25 +85,14 @@ int UdpClient::recv(uint8_t *buffer, size_t maxLen, int timeoutMs) {
 		return -1;
 	}
 
-	struct pollfd fd;
-	fd.fd = sockfd;
-	fd.events = POLLIN;
-
-	int ret = poll(&fd, 1, timeoutMs);
-	if (ret > 0) {
-		if (fd.revents & POLLIN) {
-			ssize_t bytesRead = ::recv(sockfd, buffer, maxLen, 0);
-			if (bytesRead > 0) {
-				return bytesRead;
-			} else if (bytesRead < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
-				Logger::log("[UDP] Recv error: %d", errno);
-				return -1;
-			}
-		}
-	} else if (ret < 0) {
-		Logger::log("[UDP] Poll error: %d", errno);
+	ssize_t bytesRead = ::recv(sockfd, buffer, maxLen, 0);
+	if (bytesRead > 0) {
+		return bytesRead;
+	} else if (bytesRead < 0 && errno != EAGAIN && errno != EWOULDBLOCK) {
+		Logger::log("[UDP] Recv error: %d", errno);
 		return -1;
 	}
+	
 	return 0; // Timeout or no data
 }
 

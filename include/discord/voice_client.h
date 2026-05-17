@@ -75,6 +75,8 @@ class VoiceClient {
 
 	int heartbeatInterval;
 	uint64_t lastHeartbeatTime;
+	uint64_t lastDiscoveryTime;
+	int discoveryRetries;
 
 	std::vector<int16_t> micAccumulator;
 
@@ -82,6 +84,7 @@ class VoiceClient {
 	void handleVoiceWsMessage(std::string &msg);
 	void connectVoiceWebSocket();
 	void sendVoiceIdentify();
+	void sendVoiceSpeaking();
 	void performIpDiscovery();
 	void sendSelectProtocol(const std::string &ip, int port);
 

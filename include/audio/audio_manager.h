@@ -30,9 +30,10 @@ class AudioManager {
 	AudioManager(const AudioManager &) = delete;
 	AudioManager &operator=(const AudioManager &) = delete;
 
-	// NDSP double-buffer playback
-	ndspWaveBuf waveBuf[2];
-	int16_t *playbackBuffer[2];
+	// NDSP multi-buffer playback per evitare drop (12 buffer = ~240ms di audio)
+	static const int NUM_WAVE_BUFS = 12;
+	ndspWaveBuf waveBuf[NUM_WAVE_BUFS];
+	int16_t *playbackBuffer[NUM_WAVE_BUFS];
 	int currentPlayBuf;
 	size_t playbackBufferSize; // in bytes
 

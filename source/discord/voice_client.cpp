@@ -43,7 +43,7 @@ VoiceClient &VoiceClient::getInstance() {
 
 VoiceClient::VoiceClient()
     : state(State::DISCONNECTED), ssrc(0), decoder(nullptr), encoder(nullptr), sequence(0), timestamp(0), muted(false),
-      deafened(false), heartbeatInterval(0), lastHeartbeatTime(0) {
+      deafened(false), heartbeatInterval(0), lastHeartbeatTime(0), lastDiscoveryTime(0), discoveryRetries(0) {
 	voiceWs.setOnMessage([this](std::string &msg) { handleVoiceWsMessage(msg); });
 	voiceWs.setOnError([](const std::string &err) { Logger::log("[Voice] WS Error: %s", err.c_str()); });
 	voiceWs.setOnClose([this](int code, const std::string &reason) {
@@ -104,6 +104,8 @@ void VoiceClient::leaveChannel() {
 	micAccumulator.clear();
 	heartbeatInterval = 0;
 	lastHeartbeatTime = 0;
+	lastDiscoveryTime = 0;
+	discoveryRetries = 0;
 }
 
 bool VoiceClient::isConnected() const { return state == State::READY; }
@@ -205,6 +207,7 @@ void VoiceClient::handleVoiceWsMessage(std::string &msg) {
 			state = State::READY;
 			Audio::AudioManager::getInstance().startCapture();
 			Logger::log("[Voice] Ready to transmit audio!");
+			sendVoiceSpeaking();
 		}
 		break;
 	}
@@ -236,8 +239,30 @@ void VoiceClient::sendVoiceIdentify() {
 	Logger::log("[Voice] Sent Identify");
 }
 
+void VoiceClient::sendVoiceSpeaking() {
+	rapidjson::Document d;
+	d.SetObject();
+	auto &alloc = d.GetAllocator();
+
+	d.AddMember("op", 5, alloc);
+	
+	rapidjson::Value data(rapidjson::kObjectType);
+	data.AddMember("speaking", 1, alloc);
+	data.AddMember("delay", 0, alloc);
+	data.AddMember("ssrc", ssrc, alloc);
+	
+	d.AddMember("d", data, alloc);
+
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	d.Accept(writer);
+
+	voiceWs.send(buffer.GetString());
+	Logger::log("[Voice] Sent Speaking (op 5)");
+}
+
 void VoiceClient::performIpDiscovery() {
-	Logger::log("[Voice] Performing IP Discovery...");
+	Logger::log("[Voice] Performing IP Discovery (Try %d)...", discoveryRetries + 1);
 	uint8_t packet[74] = {0};
 	packet[0] = 0x0;
 	packet[1] = 0x1;
@@ -249,6 +274,8 @@ void VoiceClient::performIpDiscovery() {
 	packet[7] = (ssrc >> 0) & 0xFF;
 
 	udp.send(packet, 74);
+	lastDiscoveryTime = osGetTime();
+	discoveryRetries++;
 }
 
 void VoiceClient::sendSelectProtocol(const std::string &ip, int port) {
@@ -302,13 +329,30 @@ void VoiceClient::update() {
 		}
 		
 		if (state == State::DISCOVERING_IP) {
-			uint8_t buf[74];
+			// Retry discovery se non riceviamo risposta entro 1 secondo
+			if (osGetTime() - lastDiscoveryTime > 1000) {
+				if (discoveryRetries < 5) {
+					performIpDiscovery();
+				} else {
+					Logger::log("[Voice] IP Discovery failed after 5 retries. Leaving channel.");
+					leaveChannel();
+				}
+			}
+
+			uint8_t buf[256];
 			int len = udp.recv(buf, sizeof(buf), 0); // Non-blocking
-			if (len == 74) {
+			if (len >= 74) {
+				// Il pacchetto di risposta (type 2) ha l'IP a partire dall'offset 8.
+				// L'IP è una stringa null-terminated.
 				std::string myIp = std::string((char*)&buf[8]);
 				uint16_t myPort = (buf[72] << 8) | buf[73];
-				Logger::log("[Voice] IP Discovered: %s:%d", myIp.c_str(), myPort);
-				sendSelectProtocol(myIp, myPort);
+				
+				if (!myIp.empty() && myPort > 0) {
+					Logger::log("[Voice] IP Discovered: %s:%d", myIp.c_str(), myPort);
+					sendSelectProtocol(myIp, myPort);
+				}
+			} else if (len > 0) {
+				Logger::log("[Voice] Unexpected UDP packet size during discovery: %d", len);
 			}
 		} else if (state == State::READY) {
 			// Ricevi e processa TUTTI i pacchetti audio in coda (UDP)

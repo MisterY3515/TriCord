@@ -253,7 +253,7 @@ void ScreenManager::update() {
 			vc.leaveChannel();
 			showToast("Left voice channel");
 		}
-	} else if (kDown & KEY_R) {
+	} else if (kDown & KEY_X) {
 		auto &vc = Discord::VoiceClient::getInstance();
 		if (vc.isInChannel()) {
 			vc.setMuted(!vc.isMuted());
@@ -347,7 +347,7 @@ void ScreenManager::renderVoiceOverlay() {
 	C2D_DrawRectSolid(0.0f, barY, 0.9f, halfW, barH, muteColor);
 	C2D_DrawRectSolid(0.0f, barY, 0.91f, halfW, 1.0f, C2D_Color32(255, 255, 255, 100)); // highlight
 	
-	std::string muteStr = vc.isMuted() ? "\uE004 Unmute" : "\uE004 Mute";
+	std::string muteStr = vc.isMuted() ? "\uE002 Unmute" : "\uE002 Mute";
 	C2D_Text mText;
 	C2D_TextParse(&mText, textBuf, muteStr.c_str());
 	C2D_TextOptimize(&mText);
