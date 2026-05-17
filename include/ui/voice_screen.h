@@ -22,7 +22,7 @@ class VoiceScreen : public Screen {
 	struct VoiceUser {
 		std::string userId;
 		std::string displayName;
-		std::string avatarUrl;
+		std::string avatarHash;
 		bool isSpeaking;
 		bool isMuted;
 		bool isDeafened;

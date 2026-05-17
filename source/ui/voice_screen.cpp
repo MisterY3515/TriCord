@@ -3,8 +3,8 @@
 #include "discord/avatar_cache.h"
 #include "discord/discord_client.h"
 #include "discord/voice_client.h"
-#include "ui/image_manager.h"
 #include "ui/screen_manager.h"
+#include "utils/utf8_utils.h"
 #include <3ds.h>
 #include <cmath>
 
@@ -40,22 +40,17 @@ void VoiceScreen::refreshUserList() {
 		vu.isMuted = false;
 		vu.isDeafened = false;
 
-		// Try to get display name from guild members
+		// Get display name from guild member nickname
 		Discord::Member member = dc.getMember(guildId, uid);
-		if (!member.nick.empty()) {
-			vu.displayName = member.nick;
-		} else if (!member.user.global_name.empty()) {
-			vu.displayName = member.user.global_name;
-		} else if (!member.user.username.empty()) {
-			vu.displayName = member.user.username;
+		if (!member.nickname.empty()) {
+			vu.displayName = member.nickname;
 		} else {
-			vu.displayName = uid;
+			// Fallback to user_id (we don't have full User data in member list)
+			vu.displayName = uid.substr(0, 8) + "...";
 		}
 
-		// Avatar URL
-		if (!member.user.avatar.empty()) {
-			vu.avatarUrl = "https://cdn.discordapp.com/avatars/" + uid + "/" + member.user.avatar + ".png?size=64";
-		}
+		// We don't have avatar hash in the Member struct, leave empty for fallback
+		vu.avatarHash = "";
 
 		// Check voice state (mute/deaf)
 		for (const auto &guild : dc.getGuilds()) {
@@ -299,22 +294,21 @@ void VoiceScreen::renderBottom(C3D_RenderTarget *target) {
 			           avatarSize / 2.0f + 3.0f, C2D_Color32(87, 242, 135, 200));
 		}
 
-		// Avatar placeholder (rounded rect)
-		u32 avatarColor = isSelected ? ScreenManager::colorAccent() : ScreenManager::colorBackgroundLight();
-		drawRoundedRect(avatarX, avatarY, 0.7f, avatarSize, avatarSize, 4.0f, avatarColor);
-
-		// Try to draw actual avatar
-		if (!user.avatarUrl.empty()) {
-			C2D_Image img = ImageManager::getInstance().getImage(user.avatarUrl);
-			if (img.tex) {
-				C2D_DrawImageAt(img, avatarX, avatarY, 0.75f, nullptr, avatarSize / img.subtex->width,
-				                avatarSize / img.subtex->height);
-			}
+		// Avatar via AvatarCache
+		C3D_Tex *tex = nullptr;
+		if (!user.avatarHash.empty()) {
+			tex = Discord::AvatarCache::getInstance().getAvatar(user.userId, user.avatarHash, "");
 		}
 
-		// First letter fallback
-		if (user.avatarUrl.empty() || !ImageManager::getInstance().getImage(user.avatarUrl).tex) {
-			std::string initial = user.displayName.empty() ? "?" : user.displayName.substr(0, 1);
+		if (tex) {
+			Tex3DS_SubTexture subtex = {(u16)tex->width, (u16)tex->height, 0.0f, 1.0f, 1.0f, 0.0f};
+			C2D_Image img = {tex, &subtex};
+			C2D_DrawImageAt(img, avatarX, avatarY, 0.75f, nullptr, avatarSize / tex->width, avatarSize / tex->height);
+		} else {
+			// Fallback: colored rect with initial
+			u32 avatarColor = isSelected ? ScreenManager::colorAccent() : ScreenManager::colorBackgroundLight();
+			drawRoundedRect(avatarX, avatarY, 0.7f, avatarSize, avatarSize, 4.0f, avatarColor);
+			std::string initial = Utils::Utf8::getFirstChar(user.displayName.empty() ? "?" : user.displayName);
 			drawText(avatarX + 9.0f, avatarY + 6.0f, 0.8f, 0.5f, 0.5f, ScreenManager::colorWhite(), initial);
 		}
 
@@ -325,11 +319,11 @@ void VoiceScreen::renderBottom(C3D_RenderTarget *target) {
 		// Status icons
 		float statusX = 280.0f;
 		if (user.isDeafened) {
-			drawText(statusX, y + 12.0f, 0.7f, 0.4f, 0.4f, ScreenManager::colorError(), "\uE070");
+			drawText(statusX, y + 12.0f, 0.7f, 0.4f, 0.4f, ScreenManager::colorError(), "D");
 			statusX -= 18.0f;
 		}
 		if (user.isMuted) {
-			drawText(statusX, y + 12.0f, 0.7f, 0.4f, 0.4f, ScreenManager::colorError(), "\uE071");
+			drawText(statusX, y + 12.0f, 0.7f, 0.4f, 0.4f, ScreenManager::colorError(), "M");
 		}
 
 		// Separator
