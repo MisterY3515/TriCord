@@ -31,7 +31,7 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	TriCord
 BUILD		:=	build
-SOURCES		:=	source source/core source/network source/discord source/ui source/ui/forum source/utils library/qrcodegen
+SOURCES		:=	source source/core source/network source/audio source/discord source/ui source/ui/forum source/utils library/qrcodegen
 DATA		:=	data
 INCLUDES	:=	include include/core include/ui library library/stb_image library/qrcodegen
 GRAPHICS	:=	gfx
@@ -67,7 +67,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17 -Wno-psabi
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lcurl -lmbedtls -lmbedx509 -lmbedcrypto -lz -lcitro2d -lcitro3d -lctru -lm
+LIBS	:= -lcurl -lmbedtls -lmbedx509 -lmbedcrypto -lz -lopus -lsodium -lcitro2d -lcitro3d -lctru -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

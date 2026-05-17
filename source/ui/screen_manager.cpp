@@ -3,6 +3,7 @@
 #include "core/i18n.h"
 #include "discord/avatar_cache.h"
 #include "discord/discord_client.h"
+#include "discord/voice_client.h"
 #include "log.h"
 #include "ui/about_screen.h"
 #include "ui/disclaimer_screen.h"
@@ -246,6 +247,12 @@ void ScreenManager::update() {
 	if ((kHeld & KEY_L) && (kDown & KEY_R)) {
 		toggleDebugOverlay();
 		Logger::log("Debug overlay toggled: %s", debugOverlayEnabled ? "ON" : "OFF");
+	} else if (kDown & KEY_R) {
+		auto &vc = Discord::VoiceClient::getInstance();
+		if (vc.isInChannel()) {
+			vc.setMuted(!vc.isMuted());
+			showToast(vc.isMuted() ? TR("common.muted") : TR("common.unmuted"));
+		}
 	}
 
 	if (toastTimer > 0) {
@@ -293,7 +300,29 @@ void ScreenManager::render() {
 		drawToast();
 	}
 
+	if (Discord::VoiceClient::getInstance().isInChannel()) {
+		renderVoiceOverlay();
+	}
+
 	C3D_FrameEnd(0);
+}
+
+void ScreenManager::renderVoiceOverlay() {
+	auto &vc = Discord::VoiceClient::getInstance();
+	
+	// Draw a persistent green bar at the very bottom
+	float barH = 20.0f;
+	float barY = BOTTOM_SCREEN_HEIGHT - barH;
+	C2D_DrawRectSolid(0.0f, barY, 0.9f, BOTTOM_SCREEN_WIDTH, barH, colorAccent());
+	
+	std::string status = "\uE008 Voice Connected";
+	if (vc.isMuted()) status += " (Muted)";
+	
+	C2D_Text text;
+	C2D_TextParse(&text, textBuf, status.c_str());
+	C2D_TextOptimize(&text);
+	
+	C2D_DrawText(&text, C2D_WithColor, 5.0f, barY + 3.0f, 0.95f, 0.45f, 0.45f, C2D_Color32(255, 255, 255, 255));
 }
 
 void ScreenManager::toggleDebugOverlay() { debugOverlayEnabled = !debugOverlayEnabled; }

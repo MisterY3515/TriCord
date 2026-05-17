@@ -147,6 +147,7 @@ class DiscordClient {
 	void submitMFA(const std::string &ticket, const std::string &code, LoginCallback cb);
 
 	void sendLazyRequest(const std::string &guildId, const std::string &channelId);
+	void sendVoiceStateUpdate(const std::string &guildId, const std::string &channelId, bool mute, bool deaf);
 
 	bool canSendMessage(const std::string &channelId);
 	bool canManageMessages(const std::string &channelId);
@@ -206,6 +207,7 @@ class DiscordClient {
 	void handleUserSettingsUpdate(const rapidjson::Value &d);
 	void handleSessionsReplace(const rapidjson::Value &d);
 	void handleVoiceStateUpdate(const rapidjson::Value &d);
+	void handleVoiceServerUpdate(const rapidjson::Value &d);
 	void parseGuildObject(const rapidjson::Value &gObj, Guild &guild, const std::string &userId);
 	void parseChannelObject(const rapidjson::Value &cObj, Channel &channel);
 	void parseOverwrites(const rapidjson::Value &ows, std::vector<Overwrite> &overwrites);

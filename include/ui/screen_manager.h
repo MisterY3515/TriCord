@@ -156,6 +156,7 @@ class ScreenManager {
 
 	std::set<std::string> expandedFolders;
 
+	void renderVoiceOverlay();
 	void drawHamburgerButton();
 	void drawToast();
 

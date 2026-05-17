@@ -1,6 +1,6 @@
 #!/bin/bash
 # TriCord Build Script for Linux/macOS
-# Requires: devkitARM, 3ds-curl, 3ds-mbedtls, 3ds-zlib, bannertool, makerom
+# Requires: devkitARM, 3ds-curl, 3ds-mbedtls, 3ds-zlib, 3ds-libopus, 3ds-libsodium, bannertool, makerom
 set -e
 
 TOOLS_DIR="$(cd "$(dirname "$0")" && pwd)"

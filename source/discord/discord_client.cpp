@@ -2,6 +2,7 @@
 #include "core/config.h"
 #include "core/i18n.h"
 #include "discord/avatar_cache.h"
+#include "discord/voice_client.h"
 #include "log.h"
 #include "network/http_client.h"
 #include "network/network_manager.h"
@@ -529,6 +530,8 @@ void DiscordClient::handleDispatch(const rapidjson::Document &doc) {
 		handleSessionsReplace(d);
 	} else if (t == "VOICE_STATE_UPDATE") {
 		handleVoiceStateUpdate(d);
+	} else if (t == "VOICE_SERVER_UPDATE") {
+		handleVoiceServerUpdate(d);
 	} else if (t == "THREAD_CREATE" || t == "THREAD_UPDATE") {
 		handleChannelCreateUpdate(d);
 	} else if (t == "THREAD_LIST_SYNC") {
@@ -990,6 +993,46 @@ void DiscordClient::handleVoiceStateUpdate(const rapidjson::Value &d) {
 			break;
 		}
 	}
+}
+
+void DiscordClient::handleVoiceServerUpdate(const rapidjson::Value &d) {
+	std::string token = Utils::Json::getString(d, "token");
+	std::string endpoint = Utils::Json::getString(d, "endpoint");
+	
+	VoiceClient::getInstance().onVoiceServerUpdate(token, endpoint);
+}
+
+void DiscordClient::sendVoiceStateUpdate(const std::string &guildId, const std::string &channelId, bool mute, bool deaf) {
+	rapidjson::Document d;
+	d.SetObject();
+	auto &alloc = d.GetAllocator();
+
+	d.AddMember("op", 4, alloc); // Gateway Opcode 4: Voice State Update
+	
+	rapidjson::Value data(rapidjson::kObjectType);
+	if (guildId.empty()) {
+		data.AddMember("guild_id", rapidjson::Value(rapidjson::kNullType), alloc);
+	} else {
+		data.AddMember("guild_id", rapidjson::Value(guildId.c_str(), alloc), alloc);
+	}
+	
+	if (channelId.empty()) {
+		data.AddMember("channel_id", rapidjson::Value(rapidjson::kNullType), alloc);
+	} else {
+		data.AddMember("channel_id", rapidjson::Value(channelId.c_str(), alloc), alloc);
+	}
+	
+	data.AddMember("self_mute", mute, alloc);
+	data.AddMember("self_deaf", deaf, alloc);
+
+	d.AddMember("d", data, alloc);
+
+	rapidjson::StringBuffer buffer;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+	d.Accept(writer);
+
+	queueSend(buffer.GetString());
+	Logger::log("[Voice] Sent Voice State Update to Gateway (channel: %s)", channelId.empty() ? "none" : channelId.c_str());
 }
 
 void DiscordClient::handleResumed() {

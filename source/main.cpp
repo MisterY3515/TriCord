@@ -1,6 +1,8 @@
 #include "core/config.h"
 #include "core/i18n.h"
+#include "audio/audio_manager.h"
 #include "discord/discord_client.h"
+#include "discord/voice_client.h"
 #include "log.h"
 #include "network/http_client.h"
 #include "network/network_manager.h"
@@ -45,6 +47,7 @@ int main(int argc, char **argv) {
 	}
 
 	UI::ImageManager::getInstance().init();
+	Audio::AudioManager::getInstance().init();
 	Discord::DiscordClient::getInstance().init();
 	UI::ScreenManager::getInstance().init();
 
@@ -53,6 +56,7 @@ int main(int argc, char **argv) {
 
 		UI::ScreenManager::getInstance().update();
 		Discord::DiscordClient::getInstance().update();
+		Discord::VoiceClient::getInstance().update();
 
 		if (UI::ScreenManager::getInstance().shouldCloseApplication()) {
 			break;
@@ -64,6 +68,7 @@ int main(int argc, char **argv) {
 	UI::ScreenManager::getInstance().shutdown();
 	UI::ImageManager::getInstance().shutdown();
 	Discord::DiscordClient::getInstance().shutdown();
+	Audio::AudioManager::getInstance().shutdown();
 	Network::NetworkManager::getInstance().shutdown();
 	psExit();
 	romfsExit();

@@ -36,10 +36,10 @@ echo === devkitARM: %DEVKITARM% ===
 
 REM Install dependencies automatically via pacman if missing
 echo === Checking/Installing library dependencies (pacman) ===
-pacman -S --needed --noconfirm 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config
+pacman -S --needed --noconfirm 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config 3ds-libopus 3ds-libsodium
 if errorlevel 1 (
     echo WARNING: pacman failed to install dependencies. You may need to run this manually in MSYS2:
-    echo pacman -S 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config
+    echo pacman -S 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config 3ds-libopus 3ds-libsodium
 )
 
 REM Check makerom

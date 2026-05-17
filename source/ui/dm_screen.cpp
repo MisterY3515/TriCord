@@ -2,6 +2,7 @@
 #include "core/i18n.h"
 #include "discord/avatar_cache.h"
 #include "discord/discord_client.h"
+#include "discord/voice_client.h"
 #include "log.h"
 #include "ui/image_manager.h"
 #include "ui/screen_manager.h"
@@ -95,6 +96,12 @@ void DmScreen::update() {
 			Discord::DiscordClient::getInstance().setSelectedChannelId(dm.id);
 			ScreenManager::getInstance().pushScreen(ScreenType::MESSAGES);
 		}
+	} else if (kDown & KEY_Y) {
+		if (selectedIndex >= 0 && selectedIndex < (int)dms.size()) {
+			const auto &dm = dms[selectedIndex];
+			Discord::VoiceClient::getInstance().joinChannel("", dm.id);
+			ScreenManager::getInstance().showToast(TR("common.calling"));
+		}
 	}
 
 	if (kDown & KEY_B) {
@@ -155,7 +162,7 @@ void DmScreen::renderBottom(C3D_RenderTarget *target) {
 
 	drawText(10.0f, 240.0f - 25.0f, 0.5f, 0.4f, 0.4f, ScreenManager::colorTextMuted(),
 	         "\uE079\uE07A: " + TR("common.navigate") + "  \uE000: " + TR("common.open") +
-	             "  \uE001: " + TR("common.back"));
+	             "  \uE003: Call  \uE001: " + TR("common.back"));
 }
 
 void DmScreen::drawDmItem(int index, const Discord::Channel &dm, float y) {

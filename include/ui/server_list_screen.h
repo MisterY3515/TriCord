@@ -58,8 +58,9 @@ class ServerListScreen : public Screen {
 
 	std::map<std::string, C3D_Tex *> iconCache;
 
-	enum class State { SELECTING_SERVER, TRANSITION_TO_CHANNEL, SELECTING_CHANNEL, TRANSITION_TO_SERVER };
+	enum class State { SELECTING_SERVER, TRANSITION_TO_CHANNEL, SELECTING_CHANNEL, TRANSITION_TO_SERVER, VOICE_CONFIRM };
 	State state;
+	int voiceConfirmChannelIndex = -1;
 	float animationProgress;
 	float loadingAngle;
 	float animTimer;

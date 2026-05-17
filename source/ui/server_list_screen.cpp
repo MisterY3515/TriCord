@@ -2,6 +2,7 @@
 #include "core/config.h"
 #include "core/i18n.h"
 #include "discord/avatar_cache.h"
+#include "discord/voice_client.h"
 #include "log.h"
 #include "ui/image_manager.h"
 #include "utils/message_utils.h"
@@ -426,14 +427,36 @@ void ServerListScreen::update() {
 			if (selectedChannelIndex >= 0 && selectedChannelIndex < (int)sortedChannels.size()) {
 				const auto &ch = sortedChannels[selectedChannelIndex];
 				if (ch.type == 0 || ch.type == 5 || ch.type == 10 || ch.type == 11 || ch.type == 12 || ch.type == 1 ||
-				    ch.type == 3 || ch.type == 2 || ch.type == 13) {
+				    ch.type == 3) {
 					Discord::DiscordClient::getInstance().setSelectedChannelId(ch.id);
 					ScreenManager::getInstance().pushScreen(ScreenType::MESSAGES);
 				} else if (ch.type == 15) {
 					Discord::DiscordClient::getInstance().setSelectedChannelId(ch.id);
 					ScreenManager::getInstance().pushScreen(ScreenType::FORUM_CHANNEL);
+				} else if (ch.type == 2 || ch.type == 13) {
+					// Also A to join voice (optional)
+					state = State::VOICE_CONFIRM;
+					voiceConfirmChannelIndex = selectedChannelIndex;
 				}
 			}
+		} else if (kDown & KEY_Y) {
+			if (selectedChannelIndex >= 0 && selectedChannelIndex < (int)sortedChannels.size()) {
+				const auto &ch = sortedChannels[selectedChannelIndex];
+				if (ch.type == 2 || ch.type == 13) {
+					state = State::VOICE_CONFIRM;
+					voiceConfirmChannelIndex = selectedChannelIndex;
+				}
+			}
+		}
+	} else if (state == State::VOICE_CONFIRM) {
+		if (kDown & KEY_B) {
+			state = State::SELECTING_CHANNEL;
+		} else if (kDown & KEY_A) {
+			if (voiceConfirmChannelIndex >= 0 && voiceConfirmChannelIndex < (int)sortedChannels.size()) {
+				const auto &ch = sortedChannels[voiceConfirmChannelIndex];
+				Discord::VoiceClient::getInstance().joinChannel(sm.getSelectedGuildId(), ch.id);
+			}
+			state = State::SELECTING_CHANNEL;
 		}
 	}
 }
