@@ -69,6 +69,17 @@ struct Member {
 	std::vector<std::string> role_ids;
 };
 
+struct VoiceState {
+	std::string user_id;
+	std::string channel_id;
+	std::string session_id;
+	bool mute;
+	bool deaf;
+	bool self_mute;
+	bool self_deaf;
+	bool self_video;
+};
+
 struct GuildFolder {
 	std::string id;
 	std::string name;
@@ -89,6 +100,7 @@ struct Guild {
 	std::vector<std::string> myRoles;
 	std::vector<Role> roles;
 	std::vector<Member> members;
+	std::vector<VoiceState> voiceStates;
 };
 
 struct EmbedField {
