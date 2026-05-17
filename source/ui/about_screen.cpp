@@ -131,7 +131,10 @@ void AboutScreen::renderBottom(C3D_RenderTarget *target) {
 	};
 
 	drawSectionTitle("Credits", true);
-	drawEntry("2b-zipper", "Lead Developer");
+	drawEntry("MisterY3515", "Revanced Version Developer");
+
+	drawSectionTitle("Original Project Credits", true);
+	drawEntry("2b-zipper", "Original Lead Developer");
 	drawEntry("Str4ky", "French Translation");
 	drawEntry("AverageJohtonian", "Spanish Translation");
 	drawEntry("RossoDev", "Italian Translation");
