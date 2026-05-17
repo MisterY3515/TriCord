@@ -13,6 +13,7 @@ struct AvatarInfo {
 	C3D_Tex *tex = nullptr;
 	std::string url;
 	bool loading = false;
+	uint64_t lastAccess = 0;
 };
 
 class AvatarCache {
@@ -23,6 +24,8 @@ class AvatarCache {
 	void shutdown();
 	void update();
 	void clear();
+	void evictOldestIfNeeded();
+	bool isBusy() const;
 
 	C3D_Tex *getAvatar(const std::string &userId, const std::string &avatarHash, const std::string &discriminator);
 	C3D_Tex *getGuildIcon(const std::string &guildId, const std::string &iconHash);
@@ -38,6 +41,8 @@ class AvatarCache {
 
 	std::map<std::string, AvatarInfo> cache;
 	std::recursive_mutex cacheMutex;
+	uint64_t accessCounter = 0;
+	const size_t MAX_CACHE_SIZE = 100;
 
 	struct PendingAvatar {
 		std::string id;

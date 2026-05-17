@@ -44,6 +44,39 @@ void AvatarCache::clear() {
 	}
 	cache.clear();
 	pendingAvatars.clear();
+	accessCounter = 0;
+}
+
+void AvatarCache::evictOldestIfNeeded() {
+	std::lock_guard<std::recursive_mutex> lock(cacheMutex);
+	if (cache.size() <= MAX_CACHE_SIZE) {
+		return;
+	}
+
+	std::string oldestId;
+	uint64_t oldestAccess = UINT64_MAX;
+
+	for (const auto &pair : cache) {
+		if (!pair.second.loading && pair.second.lastAccess < oldestAccess) {
+			oldestAccess = pair.second.lastAccess;
+			oldestId = pair.first;
+		}
+	}
+
+	if (!oldestId.empty()) {
+		auto it = cache.find(oldestId);
+		if (it != cache.end()) {
+			if (it->second.tex) {
+				C3D_TexDelete(it->second.tex);
+				free(it->second.tex);
+			}
+			cache.erase(it);
+		}
+	}
+}
+
+bool AvatarCache::isBusy() const {
+	return !pendingAvatars.empty();
 }
 
 C3D_Tex *AvatarCache::getAvatar(const std::string &userId, const std::string &avatarHash,
@@ -55,6 +88,7 @@ C3D_Tex *AvatarCache::getAvatar(const std::string &userId, const std::string &av
 	std::lock_guard<std::recursive_mutex> lock(cacheMutex);
 	auto it = cache.find(userId);
 	if (it != cache.end()) {
+		it->second.lastAccess = ++accessCounter;
 		if (it->second.tex) {
 			return it->second.tex;
 		}
@@ -73,6 +107,7 @@ C3D_Tex *AvatarCache::getGuildIcon(const std::string &guildId, const std::string
 	std::lock_guard<std::recursive_mutex> lock(cacheMutex);
 	auto it = cache.find(guildId);
 	if (it != cache.end()) {
+		it->second.lastAccess = ++accessCounter;
 		if (it->second.tex) {
 			return it->second.tex;
 		}
@@ -91,6 +126,7 @@ C3D_Tex *AvatarCache::getChannelIcon(const std::string &channelId, const std::st
 	std::lock_guard<std::recursive_mutex> lock(cacheMutex);
 	auto it = cache.find(channelId);
 	if (it != cache.end()) {
+		it->second.lastAccess = ++accessCounter;
 		if (it->second.tex) {
 			return it->second.tex;
 		}
@@ -138,7 +174,10 @@ void AvatarCache::prefetchAvatar(const std::string &userId, const std::string &a
 	}
 
 	info.loading = true;
+	info.lastAccess = ++accessCounter;
 	cache[userId] = info;
+
+	evictOldestIfNeeded();
 
 	Network::NetworkManager::getInstance().enqueue(
 	    info.url, "GET", "", Network::RequestPriority::BACKGROUND, [this, userId](const Network::HttpResponse &resp) {
@@ -179,7 +218,10 @@ void AvatarCache::prefetchGuildIcon(const std::string &guildId, const std::strin
 	AvatarInfo info;
 	info.url = "https://cdn.discordapp.com/icons/" + guildId + "/" + iconHash + ".png?size=64";
 	info.loading = true;
+	info.lastAccess = ++accessCounter;
 	cache[guildId] = info;
+
+	evictOldestIfNeeded();
 
 	Network::NetworkManager::getInstance().enqueue(
 	    info.url, "GET", "", Network::RequestPriority::BACKGROUND, [this, guildId](const Network::HttpResponse &resp) {
@@ -220,7 +262,10 @@ void AvatarCache::prefetchChannelIcon(const std::string &channelId, const std::s
 	AvatarInfo info;
 	info.url = "https://cdn.discordapp.com/channel-icons/" + channelId + "/" + iconHash + ".png?size=64";
 	info.loading = true;
+	info.lastAccess = ++accessCounter;
 	cache[channelId] = info;
+
+	evictOldestIfNeeded();
 
 	Network::NetworkManager::getInstance().enqueue(
 	    info.url, "GET", "", Network::RequestPriority::BACKGROUND,
