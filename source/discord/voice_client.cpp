@@ -7,6 +7,32 @@
 #include <rapidjson/writer.h>
 #include <sodium.h>
 #include "audio/audio_manager.h"
+#include <3ds.h>
+
+// Custom randombytes implementation for libsodium on 3DS
+// 3DS has no /dev/urandom, so we use PS_GenerateRandomBytes from libctru
+static const char *randombytes_3ds_name(void) {
+	return "3ds";
+}
+
+static void randombytes_3ds_buf(void *const buf, const size_t size) {
+	PS_GenerateRandomBytes(buf, size);
+}
+
+static uint32_t randombytes_3ds_random(void) {
+	uint32_t val;
+	PS_GenerateRandomBytes(&val, sizeof(val));
+	return val;
+}
+
+static struct randombytes_implementation randombytes_3ds_implementation = {
+    .implementation_name = randombytes_3ds_name,
+    .random = randombytes_3ds_random,
+    .stir = NULL,
+    .uniform = NULL,
+    .buf = randombytes_3ds_buf,
+    .close = NULL,
+};
 
 namespace Discord {
 
@@ -38,6 +64,9 @@ void VoiceClient::joinChannel(const std::string &guildId, const std::string &cha
 
 	// Lazy init sodium & opus (only when actually needed, not at app startup)
 	if (!decoder) {
+		// Register custom randombytes using 3DS PS service (no /dev/urandom on 3DS)
+		randombytes_set_implementation(&randombytes_3ds_implementation);
+
 		if (sodium_init() < 0) {
 			Logger::log("[Voice] Failed to initialize libsodium!");
 			return;
