@@ -1002,6 +1002,21 @@ void DiscordClient::handleVoiceServerUpdate(const rapidjson::Value &d) {
 	VoiceClient::getInstance().onVoiceServerUpdate(token, endpoint);
 }
 
+std::vector<std::string> DiscordClient::getUsersInVoiceChannel(const std::string &channelId) {
+	std::lock_guard<std::recursive_mutex> lock(clientMutex);
+	std::vector<std::string> users;
+	if (channelId.empty()) return users;
+	
+	for (const auto &guild : guilds) {
+		for (const auto &vs : guild.voiceStates) {
+			if (vs.channel_id == channelId) {
+				users.push_back(vs.user_id);
+			}
+		}
+	}
+	return users;
+}
+
 void DiscordClient::sendVoiceStateUpdate(const std::string &guildId, const std::string &channelId, bool mute, bool deaf) {
 	rapidjson::Document d;
 	d.SetObject();

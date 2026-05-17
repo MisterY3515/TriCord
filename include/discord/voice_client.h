@@ -32,6 +32,9 @@ class VoiceClient {
 	bool isMuted() const;
 	bool isDeafened() const;
 
+	std::string getGuildId() const { return guildId; }
+	std::string getChannelId() const { return channelId; }
+
 	// Callback dal Gateway
 	void onVoiceServerUpdate(const std::string &token, const std::string &endpoint);
 

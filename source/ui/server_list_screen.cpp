@@ -946,12 +946,18 @@ void ServerListScreen::renderBottom(C3D_RenderTarget *target) {
 
 	if (state == State::SELECTING_SERVER) {
 		drawText(10.0f, BOTTOM_SCREEN_HEIGHT - 25.0f, 0.5f, 0.4f, 0.4f, ScreenManager::colorTextMuted(),
-		         "\uE079\uE07A: " + TR("common.navigate") + "  \uE000: " + TR("common.enter") +
-		             "  START: " + TR("common.exit"));
+		         "\uE079\uE07A: " + TR("common.navigate") + "  \uE000: " + TR("common.enter"));
 	} else {
-		drawText(10.0f, BOTTOM_SCREEN_HEIGHT - 25.0f, 0.5f, 0.4f, 0.4f, ScreenManager::colorTextMuted(),
-		         "\uE079\uE07A: " + TR("common.navigate") + "  \uE001: " + TR("common.back") +
-		             "  \uE000: " + TR("common.enter"));
+		// Check if selected channel is a voice channel to show Y hint
+		std::string hint = "\uE079\uE07A: " + TR("common.navigate") + "  \uE001: " + TR("common.back") +
+		                    "  \uE000: " + TR("common.enter");
+		if (selectedChannelIndex >= 0 && selectedChannelIndex < (int)sortedChannels.size()) {
+			const auto &ch = sortedChannels[selectedChannelIndex];
+			if (ch.type == 2 || ch.type == 13) {
+				hint += "  \uE003: Voice";
+			}
+		}
+		drawText(10.0f, BOTTOM_SCREEN_HEIGHT - 25.0f, 0.5f, 0.4f, 0.4f, ScreenManager::colorTextMuted(), hint);
 	}
 }
 
