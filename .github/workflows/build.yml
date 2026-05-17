@@ -17,7 +17,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          dkp-pacman -Syyu --noconfirm 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config
+          dkp-pacman -S --needed --noconfirm 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config || true
           apt-get update && apt-get install -y wget unzip || true
 
       - name: Install makerom and bannertool
