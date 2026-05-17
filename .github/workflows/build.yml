@@ -15,30 +15,61 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Install dependencies
+      - name: Install system tools
+        run: |
+          apt-get update && apt-get install -y wget unzip build-essential cmake || true
+
+      - name: Install devkitPro libraries
         run: |
           dkp-pacman -S --needed --noconfirm 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config || true
-          apt-get update && apt-get install -y wget unzip || true
 
-      - name: Install makerom and bannertool
+      - name: Setup build tools directory
+        run: mkdir -p tools
+
+      - name: Install makerom
+        working-directory: tools
         run: |
-          wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.3/makerom-v0.18.3-ubuntu_x86_64.zip
-          unzip makerom-v0.18.3-ubuntu_x86_64.zip
+          wget -q https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.3/makerom-v0.18.3-ubuntu_x86_64.zip
+          unzip -o makerom-v0.18.3-ubuntu_x86_64.zip
+          chmod +x makerom
           cp makerom /usr/local/bin/
-          chmod +x /usr/local/bin/makerom
-          
-          wget -q https://github.com/carstene1ns/3ds-bannertool/archive/refs/heads/master.zip -O bannertool-src.zip
-          unzip -q bannertool-src.zip
-          cd 3ds-bannertool-master
-          make
-          cp output/linux-x86_64/bannertool /usr/local/bin/ || cp bannertool /usr/local/bin/
-          chmod +x /usr/local/bin/bannertool
-          cd ..
+          echo "makerom installed:"
+          makerom -help || true
 
-      - name: Build
+      - name: Install bannertool
+        working-directory: tools
+        run: |
+          wget -q https://github.com/carstene1ns/3ds-bannertool/archive/refs/heads/master.zip -O bannertool-src.zip
+          unzip -o bannertool-src.zip
+          ls -la
+          BTDIR=$(find . -maxdepth 1 -type d -name '*bannertool*' | head -1)
+          echo "Found bannertool dir: $BTDIR"
+          cd "$BTDIR"
+          make
+          find . -name "bannertool" -type f | head -5
+          BTBIN=$(find . -name "bannertool" -type f -executable | head -1)
+          if [ -z "$BTBIN" ]; then
+            BTBIN=$(find . -name "bannertool" -type f | head -1)
+          fi
+          echo "Using bannertool binary: $BTBIN"
+          cp "$BTBIN" /usr/local/bin/bannertool
+          chmod +x /usr/local/bin/bannertool
+          echo "bannertool installed:"
+          bannertool || true
+
+      - name: Build TriCord
         run: make
 
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: TriCord-build
+          path: |
+            TriCord.cia
+            TriCord.3dsx
+
       - name: Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |

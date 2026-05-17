@@ -4,6 +4,7 @@
 *.smdh
 *.lst
 build/
+tools/
 
 .vscode/
 Gestione/
