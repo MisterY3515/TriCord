@@ -524,6 +524,8 @@ void DiscordClient::handleDispatch(const rapidjson::Document &doc) {
 		handleUserSettingsUpdate(d);
 	} else if (t == "SESSIONS_REPLACE") {
 		handleSessionsReplace(d);
+	} else if (t == "VOICE_STATE_UPDATE") {
+		handleVoiceStateUpdate(d);
 	} else if (t == "THREAD_CREATE" || t == "THREAD_UPDATE") {
 		handleChannelCreateUpdate(d);
 	} else if (t == "THREAD_LIST_SYNC") {
@@ -943,6 +945,46 @@ void DiscordClient::handleSessionsReplace(const rapidjson::Value &d) {
 				Logger::log("[Gateway] Own status updated via SESSIONS_REPLACE to %s", statusStr.c_str());
 				break;
 			}
+		}
+	}
+}
+
+void DiscordClient::handleVoiceStateUpdate(const rapidjson::Value &d) {
+	std::lock_guard<std::recursive_mutex> lock(clientMutex);
+	
+	std::string guildId = Utils::Json::getString(d, "guild_id");
+	if (guildId.empty()) return;
+	
+	for (auto &guild : guilds) {
+		if (guild.id == guildId) {
+			std::string userId = Utils::Json::getString(d, "user_id");
+			std::string channelId = Utils::Json::getString(d, "channel_id");
+			
+			for (auto it = guild.voiceStates.begin(); it != guild.voiceStates.end();) {
+				if (it->user_id == userId) {
+					it = guild.voiceStates.erase(it);
+				} else {
+					++it;
+				}
+			}
+			
+			if (!channelId.empty()) {
+				VoiceState state;
+				state.user_id = userId;
+				state.channel_id = channelId;
+				state.session_id = Utils::Json::getString(d, "session_id");
+				state.mute = Utils::Json::getBool(d, "mute");
+				state.deaf = Utils::Json::getBool(d, "deaf");
+				state.self_mute = Utils::Json::getBool(d, "self_mute");
+				state.self_deaf = Utils::Json::getBool(d, "self_deaf");
+				state.self_video = Utils::Json::getBool(d, "self_video");
+				guild.voiceStates.push_back(std::move(state));
+			}
+			
+			Logger::log("[Voice] User %s %s voice channel %s in guild %s", 
+						userId.c_str(), channelId.empty() ? "left" : "joined/moved to",
+						channelId.c_str(), guildId.c_str());
+			break;
 		}
 	}
 }
@@ -2555,6 +2597,27 @@ void DiscordClient::parseGuildObject(const rapidjson::Value &gObj, Guild &guild,
 		for (auto &channel : guild.channels) {
 			uint64_t finalPerms = computeChannelPermissions(guild, channel, userId, guild.myRoles);
 			channel.viewable = (finalPerms & Permissions::VIEW_CHANNEL) != 0;
+		}
+	}
+
+	if (gObj.HasMember("voice_states") && gObj["voice_states"].IsArray()) {
+		const rapidjson::Value &voiceStatesArr = gObj["voice_states"];
+		guild.voiceStates.clear();
+		for (rapidjson::SizeType vs = 0; vs < voiceStatesArr.Size(); vs++) {
+			const rapidjson::Value &vsObj = voiceStatesArr[vs];
+			VoiceState state;
+			state.user_id = Utils::Json::getString(vsObj, "user_id");
+			state.channel_id = Utils::Json::getString(vsObj, "channel_id");
+			state.session_id = Utils::Json::getString(vsObj, "session_id");
+			state.mute = Utils::Json::getBool(vsObj, "mute");
+			state.deaf = Utils::Json::getBool(vsObj, "deaf");
+			state.self_mute = Utils::Json::getBool(vsObj, "self_mute");
+			state.self_deaf = Utils::Json::getBool(vsObj, "self_deaf");
+			state.self_video = Utils::Json::getBool(vsObj, "self_video");
+			
+			if (!state.channel_id.empty()) {
+				guild.voiceStates.push_back(std::move(state));
+			}
 		}
 	}
 }

@@ -598,6 +598,31 @@ void ServerListScreen::drawChannelList(float x, float y, float alpha) {
 			}
 
 			drawRichText(currentX + iconOffset, currentY + 3.0f, 0.5f, 0.5f, 0.5f, color, name);
+			
+			// Draw voice states inline
+			if (ch.type == 2 || ch.type == 13) {
+				if (selectedIndex >= 0 && selectedIndex < (int)listItems.size()) {
+					const auto &item = listItems[selectedIndex];
+					if (!item.isFolder) {
+						Discord::Guild guild = Discord::DiscordClient::getInstance().getGuild(item.id);
+						if (!guild.id.empty()) {
+							int voiceUserCount = 0;
+							float avatarSize = 16.0f;
+							float avatarX = 400.0f - 8.0f - avatarSize;
+							
+							for (const auto& vs : guild.voiceStates) {
+								if (vs.channel_id == ch.id) {
+									C2D_DrawRectSolid(avatarX, currentY + (rowHeight - avatarSize) / 2.0f, 0.5f, avatarSize, avatarSize, ScreenManager::colorBackground());
+									
+									avatarX -= (avatarSize + 4.0f);
+									voiceUserCount++;
+									if (voiceUserCount >= 5) break; // Limit to 5 avatars
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 		rendered++;
 	}

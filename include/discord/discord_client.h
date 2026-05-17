@@ -205,6 +205,7 @@ class DiscordClient {
 	void handlePresenceUpdate(const rapidjson::Value &d);
 	void handleUserSettingsUpdate(const rapidjson::Value &d);
 	void handleSessionsReplace(const rapidjson::Value &d);
+	void handleVoiceStateUpdate(const rapidjson::Value &d);
 	void parseGuildObject(const rapidjson::Value &gObj, Guild &guild, const std::string &userId);
 	void parseChannelObject(const rapidjson::Value &cObj, Channel &channel);
 	void parseOverwrites(const rapidjson::Value &ows, std::vector<Overwrite> &overwrites);
