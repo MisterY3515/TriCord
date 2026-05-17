@@ -36,10 +36,17 @@ echo === devkitARM: %DEVKITARM% ===
 
 REM Install dependencies automatically via pacman if missing
 echo === Checking/Installing library dependencies (pacman) ===
-pacman -S --needed --noconfirm 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config 3ds-libopus 3ds-libsodium
+pacman -S --needed --noconfirm 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config 3ds-libopus
 if errorlevel 1 (
     echo WARNING: pacman failed to install dependencies. You may need to run this manually in MSYS2:
-    echo pacman -S 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config 3ds-libopus 3ds-libsodium
+    echo pacman -S 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config 3ds-libopus
+)
+
+REM Build libsodium from source (not available in pacman)
+echo === Checking/Building libsodium ===
+bash "%TOOLS_DIR%\setup_libsodium.sh"
+if errorlevel 1 (
+    echo WARNING: libsodium build failed. You may need to run tools/setup_libsodium.sh manually in MSYS2.
 )
 
 REM Check makerom

@@ -148,6 +148,7 @@ class DiscordClient {
 
 	void sendLazyRequest(const std::string &guildId, const std::string &channelId);
 	void sendVoiceStateUpdate(const std::string &guildId, const std::string &channelId, bool mute, bool deaf);
+	std::string getSessionId() const { return sessionId; }
 
 	bool canSendMessage(const std::string &channelId);
 	bool canManageMessages(const std::string &channelId);

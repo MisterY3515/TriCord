@@ -2,6 +2,7 @@
 #include "log.h"
 
 #include <arpa/inet.h>
+#include <cstring>
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>

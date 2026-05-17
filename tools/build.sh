@@ -1,6 +1,7 @@
 #!/bin/bash
 # TriCord Build Script for Linux/macOS
-# Requires: devkitARM, 3ds-curl, 3ds-mbedtls, 3ds-zlib, 3ds-libopus, 3ds-libsodium, bannertool, makerom
+# Requires: devkitARM, 3ds-curl, 3ds-mbedtls, 3ds-zlib, 3ds-libopus, bannertool, makerom
+# Note: libsodium is built from source via setup_libsodium.sh (not in pacman)
 set -e
 
 TOOLS_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -54,6 +55,10 @@ if ! command -v bannertool &> /dev/null; then
     chmod +x "$TOOLS_DIR/bannertool"
 fi
 echo "=== bannertool: $(which bannertool) ==="
+
+# Build libsodium from source if not installed
+echo "=== Checking/Building libsodium ==="
+bash "$TOOLS_DIR/setup_libsodium.sh"
 
 # Build
 echo "=== Building TriCord ==="

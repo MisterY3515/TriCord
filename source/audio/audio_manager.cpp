@@ -37,8 +37,15 @@ void AudioManager::init() {
 	ndspChnSetRate(0, 16000.0f);
 	ndspChnSetFormat(0, NDSP_FORMAT_MONO_PCM16);
 	
-	// Init MIC
-	micInit(micBuffer, micBufSize);
+	// Pre-allocate MIC buffer (must be aligned to 0x1000)
+	micBufSize = 0x10000; // 64KB, aligned
+	micBuffer = (u8 *)memalign(0x1000, micBufSize);
+	if (micBuffer) {
+		memset(micBuffer, 0, micBufSize);
+		micInit(micBuffer, micBufSize);
+	} else {
+		Logger::log("[Audio] Failed to allocate MIC buffer!");
+	}
 }
 
 void AudioManager::shutdown() {
@@ -68,13 +75,11 @@ void AudioManager::queuePcm(const int16_t *pcm, size_t samples) {
 
 void AudioManager::startCapture() {
 	if (capturing) return;
+	if (!micBuffer) return;
 	
-	micBufSize = 16000 * 2 * 2; // 2 seconds of 16kHz mono
-	micBuffer = (u8 *)linearAlloc(micBufSize);
-	memset(micBuffer, 0, micBufSize);
-	
-	micSetSampleData(micBuffer, micBufSize, 0); // Not needed? wait, micInit sets it
-	MICU_StartSampling(MICU_ENCODING_PCM16_SIGNED, MICU_SAMPLE_RATE_16360, 0, micBufSize, true);
+	// sharedMemAudioSize should be at most bufferSize - 4
+	u32 audioSize = micBufSize - 4;
+	MICU_StartSampling(MICU_ENCODING_PCM16_SIGNED, MICU_SAMPLE_RATE_16360, 0, audioSize, true);
 	capturing = true;
 	lastMicPos = 0;
 	Logger::log("[Audio] Started MIC capture");
@@ -88,10 +93,7 @@ void AudioManager::stopCapture() {
 }
 
 bool AudioManager::hasNewSamples() const {
-	if (!capturing) return false;
-	u32 pos = MICU_GetLastSampleOffset(); // This might not be right...
-	// On 3DS we actually read memory offset. 
-	// The right way is checking micGetLastSampleOffset();
+	if (!capturing || !micBuffer) return false;
 	return micGetLastSampleOffset() != lastMicPos;
 }
 
