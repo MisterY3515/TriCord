@@ -11,24 +11,36 @@ cd /d "%ROOT_DIR%"
 
 set "PATH=%TOOLS_DIR%;%PATH%"
 
+REM Override DEVKITARM and DEVKITPRO if they are set to linux paths like /opt/...
+echo "%DEVKITARM%" | findstr /i "/opt/devkitpro" >nul
+if not errorlevel 1 (
+    set "DEVKITARM="
+    set "DEVKITPRO="
+)
+
 REM Check devkitARM
 if not defined DEVKITARM (
     if exist "C:\devkitPro\devkitARM" (
         set "DEVKITPRO=C:\devkitPro"
         set "DEVKITARM=C:\devkitPro\devkitARM"
-        set "PATH=!DEVKITARM!\bin;!DEVKITPRO!\tools\bin;!DEVKITPRO!\msys2\usr\bin;%PATH%"
     ) else (
-        echo ERROR: devkitARM not found.
+        echo ERROR: devkitARM not found in C:\devkitPro\devkitARM.
         echo Install it from https://devkitpro.org/wiki/Getting_Started
-        echo Or set DEVKITARM environment variable manually.
         pause
         exit /b 1
     )
-) else (
-    set "PATH=!DEVKITPRO!\msys2\usr\bin;%PATH%"
 )
 
+set "PATH=!DEVKITARM!\bin;!DEVKITPRO!\tools\bin;!DEVKITPRO!\msys2\usr\bin;%PATH%"
 echo === devkitARM: %DEVKITARM% ===
+
+REM Install dependencies automatically via pacman if missing
+echo === Checking/Installing library dependencies (pacman) ===
+pacman -S --needed --noconfirm 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config
+if errorlevel 1 (
+    echo WARNING: pacman failed to install dependencies. You may need to run this manually in MSYS2:
+    echo pacman -S 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-pkg-config
+)
 
 REM Check makerom
 where makerom >nul 2>&1
