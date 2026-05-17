@@ -45,7 +45,7 @@ void AudioManager::init() {
 	
 	// Pre-allocate MIC buffer (linearAlloc required for shared memory)
 	micBufSize = 0x10000; // 64KB
-	micBuffer = (u8 *)linearAlloc(micBufSize);
+	micBuffer = (u8 *)linearMemAlign(micBufSize, 0x1000);
 	if (micBuffer) {
 		memset(micBuffer, 0, micBufSize);
 		res = micInit(micBuffer, micBufSize);

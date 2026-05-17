@@ -65,6 +65,7 @@ int main(int argc, char **argv) {
 		UI::ScreenManager::getInstance().render();
 	}
 
+	Discord::VoiceClient::getInstance().leaveChannel();
 	UI::ScreenManager::getInstance().shutdown();
 	UI::ImageManager::getInstance().shutdown();
 	Discord::DiscordClient::getInstance().shutdown();

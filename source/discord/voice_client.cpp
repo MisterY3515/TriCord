@@ -380,7 +380,7 @@ void VoiceClient::encryptAudioPacket(const uint8_t *opus, size_t len, std::vecto
 	crypto_secretbox_easy(out.data() + 12, opus, len, nonce, secretKey);
 
 	sequence++;
-	timestamp += 320; // 20ms at 16kHz = 320 samples
+	timestamp += 960; // RTP timestamp per Opus (RFC 7587) usa sempre 48000Hz (20ms * 48000 = 960)
 }
 
 bool VoiceClient::decryptAudioPacket(const uint8_t *data, size_t len, std::vector<uint8_t> &out) {

@@ -161,6 +161,12 @@ void AboutScreen::renderBottom(C3D_RenderTarget *target) {
 	drawSectionTitle("Source Code");
 	drawText(x + 8.0f, y, 0.5f, 0.36f, 0.36f, ScreenManager::colorTextMuted(), "Licensed under GPL v3.0");
 	y += 13.0f;
+	drawRichText(x + 8.0f, y, 0.5f, 0.36f, 0.36f, ScreenManager::colorLink(),
+	             "https://github.com/MisterY3515/TriCord-Revanced");
+
+	drawSectionTitle("Original TriCord Source Code");
+	drawText(x + 8.0f, y, 0.5f, 0.36f, 0.36f, ScreenManager::colorTextMuted(), "Licensed under GPL v3.0");
+	y += 13.0f;
 	drawRichText(x + 8.0f, y, 0.5f, 0.36f, 0.36f, ScreenManager::colorLink(), "https://github.com/2b-zipper/TriCord");
 
 	y += 25.0f;
