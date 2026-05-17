@@ -97,7 +97,7 @@ void AboutScreen::renderTop(C3D_RenderTarget *target) {
 
 	drawCenteredRichText(centerY + 30.0f, 0.5f, 0.8f, 0.8f, ScreenManager::colorText(), "TriCord", 400.0f);
 
-	std::string verStr = "Version 0.0.2 build 2 (Based on TriCord 0.4.1)";
+	std::string verStr = "Version 0.0.3 (Based on TriCord 0.4.1)";
 	drawCenteredText(centerY + 55.0f, 0.5f, 0.5f, 0.5f, ScreenManager::colorTextMuted(), verStr, 400.0f);
 
 	float lineW = 100.0f;

@@ -153,22 +153,25 @@ void DiscordClient::logout() {
 }
 
 void DiscordClient::disconnect() {
-	std::lock_guard<std::recursive_mutex> lock(clientMutex);
-	if (state == ConnectionState::DISCONNECTED) {
-		return;
+	{
+		std::lock_guard<std::recursive_mutex> lock(clientMutex);
+		if (state == ConnectionState::DISCONNECTED) {
+			return;
+		}
+
+		Logger::log("DiscordClient::disconnect called");
+
+		setState(ConnectionState::DISCONNECTED, "Disconnected");
+		isConnecting = false;
 	}
 
-	Logger::log("DiscordClient::disconnect called");
-
-	setState(ConnectionState::DISCONNECTED, "Disconnected");
-
+	// Disconnect WebSocket OUTSIDE of mutex to unblock network thread's poll()
 	ws.disconnect();
 
+	// Now safe to join — network thread will see DISCONNECTED state and exit
 	if (networkThread.joinable()) {
 		networkThread.join();
 	}
-
-	isConnecting = false;
 
 	{
 		std::lock_guard<std::mutex> qLock(queueMutex);
