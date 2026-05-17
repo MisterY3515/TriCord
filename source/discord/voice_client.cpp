@@ -249,7 +249,7 @@ void VoiceClient::sendVoiceSpeaking() {
 	rapidjson::Value data(rapidjson::kObjectType);
 	data.AddMember("speaking", 1, alloc);
 	data.AddMember("delay", 0, alloc);
-	data.AddMember("ssrc", ssrc, alloc);
+	data.AddMember("ssrc", (unsigned int)ssrc, alloc);
 	
 	d.AddMember("d", data, alloc);
 
