@@ -4,6 +4,7 @@
 #include "network/udp_client.h"
 #include "network/websocket_client.h"
 #include <cstdint>
+#include <deque>
 #include <map>
 #include <string>
 #include <vector>
@@ -86,7 +87,9 @@ class VoiceClient {
 	uint64_t lastDiscoveryTime;
 	int discoveryRetries;
 
-	std::vector<int16_t> micAccumulator;
+	std::deque<int16_t> micAccumulator;
+	std::vector<uint8_t> decodeBuf;
+	std::vector<uint8_t> encodeBuf;
 
 	// Funzioni di supporto
 	void handleVoiceWsMessage(std::string &msg);

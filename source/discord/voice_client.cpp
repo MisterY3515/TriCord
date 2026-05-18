@@ -60,6 +60,18 @@ VoiceClient::~VoiceClient() {
 }
 
 void VoiceClient::joinChannel(const std::string &guildId, const std::string &channelId) {
+	// Se siamo già nello stesso canale, non fare nulla
+	if (this->channelId == channelId && state != State::DISCONNECTED) {
+		Logger::log("[Voice] Already in/joining channel %s, ignoring join request", channelId.c_str());
+		return;
+	}
+
+	// Se siamo in un altro canale, esci prima
+	if (!this->channelId.empty()) {
+		Logger::log("[Voice] Leaving current channel %s before joining %s", this->channelId.c_str(), channelId.c_str());
+		leaveChannel();
+	}
+
 	Logger::log("[Voice] Joining channel %s in guild %s", channelId.c_str(), guildId.c_str());
 
 	// Lazy init sodium & opus (only when actually needed, not at app startup)
@@ -81,12 +93,15 @@ void VoiceClient::joinChannel(const std::string &guildId, const std::string &cha
 	this->channelId = channelId;
 	state = State::WAITING_SERVER;
 
+	Audio::AudioManager::getInstance().playSystemSound(Audio::SystemSound::JOIN);
 	DiscordClient::getInstance().sendVoiceStateUpdate(guildId, channelId, muted, deafened);
 }
 
 void VoiceClient::leaveChannel() {
 	if (state == State::DISCONNECTED) return;
 	Logger::log("[Voice] Leaving channel");
+
+	Audio::AudioManager::getInstance().playSystemSound(Audio::SystemSound::LEAVE);
 
 	if (!channelId.empty()) {
 		DiscordClient::getInstance().sendVoiceStateUpdate(guildId, "", muted, deafened);
@@ -139,10 +154,13 @@ bool VoiceClient::isMuted() const { return muted; }
 bool VoiceClient::isDeafened() const { return deafened; }
 
 void VoiceClient::onVoiceServerUpdate(const std::string &token, const std::string &endpoint) {
-	if (state != State::WAITING_SERVER) return;
-
-	Logger::log("[Voice] Received server update. Endpoint: %s", endpoint.c_str());
+	if (state != State::WAITING_SERVER || channelId.empty()) {
+		Logger::log("[Voice] Ignoring Voice Server Update: state=%d, channelId=%s", (int)state, channelId.c_str());
+		return;
+	}
+	
 	voiceToken = token;
+	Logger::log("[Voice] Received server update. Endpoint: %s", endpoint.c_str());
 	
 	// Remove port from endpoint if present (e.g., vss1.discord.gg:443 -> vss1.discord.gg)
 	voiceEndpoint = endpoint;
@@ -265,7 +283,7 @@ void VoiceClient::sendVoiceSpeaking() {
 	rapidjson::Value data(rapidjson::kObjectType);
 	data.AddMember("speaking", 1, alloc);
 	data.AddMember("delay", 0, alloc);
-	data.AddMember("ssrc", (unsigned int)ssrc, alloc);
+	data.AddMember("ssrc", (uint64_t)ssrc, alloc);
 	
 	d.AddMember("d", data, alloc);
 
@@ -278,16 +296,17 @@ void VoiceClient::sendVoiceSpeaking() {
 }
 
 void VoiceClient::performIpDiscovery() {
-	Logger::log("[Voice] Performing IP Discovery (Try %d)...", discoveryRetries + 1);
+	Logger::log("[Voice] Performing IP Discovery (SSRC: %u)", ssrc);
 	uint8_t packet[74] = {0};
-	packet[0] = 0x0;
-	packet[1] = 0x1;
-	packet[2] = 0x0;
-	packet[3] = 70;
-	packet[4] = (ssrc >> 24) & 0xFF;
-	packet[5] = (ssrc >> 16) & 0xFF;
-	packet[6] = (ssrc >> 8) & 0xFF;
-	packet[7] = (ssrc >> 0) & 0xFF;
+	// Opcode 1 (Request), Length 70
+	packet[0] = 0x00;
+	packet[1] = 0x01;
+	packet[2] = 0x00;
+	packet[3] = 0x46;
+	
+	// SSRC deve essere in Big Endian
+	uint32_t ssrcBE = __builtin_bswap32(ssrc);
+	memcpy(packet + 4, &ssrcBE, 4);
 
 	udp.send(packet, 74);
 	lastDiscoveryTime = osGetTime();
@@ -323,54 +342,61 @@ void VoiceClient::sendSelectProtocol(const std::string &ip, int port) {
 }
 
 void VoiceClient::update() {
-	if (state != State::DISCONNECTED && state != State::WAITING_SERVER) {
-		voiceWs.poll();
-		
+	if (state == State::DISCONNECTED || state == State::WAITING_SERVER) return;
+
+	voiceWs.poll();
+
+	uint64_t now = osGetTime();
+
+	if (state == State::READY || state == State::DISCOVERING_IP || state == State::SELECTING_PROTOCOL) {
 		// Heartbeat WS (keep connection alive)
-		if (heartbeatInterval > 0) {
-			uint64_t now = osGetTime();
-			if (now - lastHeartbeatTime >= (uint64_t)heartbeatInterval) {
-				lastHeartbeatTime = now;
-				rapidjson::Document d;
-				d.SetObject();
-				auto &alloc = d.GetAllocator();
-				d.AddMember("op", 3, alloc); // Heartbeat
-				d.AddMember("d", rapidjson::Value(std::to_string(now).c_str(), alloc), alloc);
-				
-				rapidjson::StringBuffer buffer;
-				rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
-				d.Accept(writer);
-				voiceWs.send(buffer.GetString());
+		if (heartbeatInterval > 0 && now - lastHeartbeatTime >= (uint64_t)heartbeatInterval) {
+			lastHeartbeatTime = now;
+			rapidjson::Document d;
+			d.SetObject();
+			auto &alloc = d.GetAllocator();
+			d.AddMember("op", 3, alloc); // Heartbeat
+			d.AddMember("d", (uint64_t)now, alloc);
+			
+			rapidjson::StringBuffer buffer;
+			rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+			d.Accept(writer);
+			voiceWs.send(buffer.GetString());
+		}
+	}
+	
+	if (state == State::DISCOVERING_IP) {
+		// Retry discovery se non riceviamo risposta entro 1 secondo
+		if (osGetTime() - lastDiscoveryTime > 1000) {
+			if (discoveryRetries < 5) {
+				performIpDiscovery();
+			} else {
+				Logger::log("[Voice] IP Discovery failed after 5 retries. Leaving channel.");
+				leaveChannel();
 			}
 		}
-		
-		if (state == State::DISCOVERING_IP) {
-			// Retry discovery se non riceviamo risposta entro 1 secondo
-			if (osGetTime() - lastDiscoveryTime > 1000) {
-				if (discoveryRetries < 5) {
-					performIpDiscovery();
-				} else {
-					Logger::log("[Voice] IP Discovery failed after 5 retries. Leaving channel.");
-					leaveChannel();
-				}
-			}
 
-			uint8_t buf[256];
-			int len = udp.recv(buf, sizeof(buf), 0); // Non-blocking
-			if (len >= 74) {
-				// Il pacchetto di risposta (type 2) ha l'IP a partire dall'offset 8.
-				// L'IP è una stringa null-terminated.
-				std::string myIp = std::string((char*)&buf[8]);
-				uint16_t myPort = (buf[72] << 8) | buf[73];
-				
-				if (!myIp.empty() && myPort > 0) {
-					Logger::log("[Voice] IP Discovered: %s:%d", myIp.c_str(), myPort);
-					sendSelectProtocol(myIp, myPort);
-				}
-			} else if (len > 0) {
-				Logger::log("[Voice] Unexpected UDP packet size during discovery: %d", len);
+		uint8_t buf[256];
+		int len = udp.recv(buf, sizeof(buf), 0); // Non-blocking
+		if (len >= 74) {
+			// Il pacchetto di risposta ha l'IP a partire dall'offset 8 (fino a 64 bytes, null terminated)
+			// e la porta all'offset 72 (2 bytes, Big Endian)
+			char ip[65] = {0};
+			memcpy(ip, buf + 8, 64);
+			std::string myIp = std::string(ip);
+			
+			uint16_t portBE;
+			memcpy(&portBE, buf + 72, 2);
+			uint16_t myPort = __builtin_bswap16(portBE);
+
+			if (!myIp.empty() && myPort > 0) {
+				Logger::log("[Voice] IP Discovered: %s:%d", myIp.c_str(), myPort);
+				sendSelectProtocol(myIp, myPort);
 			}
-		} else if (state == State::READY) {
+		} else if (len > 0) {
+				Logger::log("[Voice] Unexpected UDP packet size during discovery: %d", len);
+		}
+	} else if (state == State::READY) {
 			// Ricevi e processa TUTTI i pacchetti audio in coda (UDP)
 			uint8_t buf[2048];
 			int len;
@@ -381,11 +407,10 @@ void VoiceClient::update() {
 					Logger::log("[Voice] UDP recv: %d bytes (pkt %d)", len, packetCount);
 				}
 
-				std::vector<uint8_t> decrypted;
-				if (decryptAudioPacket(buf, len, decrypted)) {
+				if (decryptAudioPacket(buf, len, decodeBuf)) {
 					// Audio decriptato, ora va decodificato
 					int16_t pcm[1920]; // 1920 samples (max 120ms at 16kHz)
-					int samples = opus_decode(decoder, decrypted.data(), decrypted.size(), pcm, 1920, 0);
+					int samples = opus_decode(decoder, decodeBuf.data(), decodeBuf.size(), pcm, 1920, 0);
 					if (packetCount % 50 == 0) {
 						Logger::log("[Voice] Decrypt OK, Opus samples: %d", samples);
 					}
@@ -412,19 +437,26 @@ void VoiceClient::update() {
 				// Invia in blocchi da 20ms (320 samples a 16kHz)
 				while (micAccumulator.size() >= 320) {
 					int16_t micBuf[320];
-					std::copy(micAccumulator.begin(), micAccumulator.begin() + 320, micBuf);
-					micAccumulator.erase(micAccumulator.begin(), micAccumulator.begin() + 320);
+					for(int i = 0; i < 320; i++) {
+						micBuf[i] = micAccumulator.front();
+						micAccumulator.pop_front();
+					}
 					
 					uint8_t opusBuf[1024];
 					int encodedLen = opus_encode(encoder, micBuf, 320, opusBuf, sizeof(opusBuf));
 					if (encodedLen > 0) {
-						std::vector<uint8_t> encrypted;
-						encryptAudioPacket(opusBuf, encodedLen, encrypted);
-						udp.send(encrypted.data(), encrypted.size());
+						encryptAudioPacket(opusBuf, encodedLen, encodeBuf);
+						udp.send(encodeBuf.data(), encodeBuf.size());
 					}
 				}
+			} else {
+				// Se mutati, svuota comunque l'AudioManager per evitare lag quando si smuta
+				if (Audio::AudioManager::getInstance().hasNewSamples()) {
+					int16_t discardBuf[1024];
+					Audio::AudioManager::getInstance().readSamples(discardBuf, 1024);
+				}
+				micAccumulator.clear();
 			}
-		}
 	}
 }
 

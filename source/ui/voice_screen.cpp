@@ -114,7 +114,6 @@ void VoiceScreen::update() {
 			case 1: // Leave call
 				Discord::VoiceClient::getInstance().leaveChannel();
 				ScreenManager::getInstance().showToast("Left voice channel");
-				ScreenManager::getInstance().returnToPreviousScreen();
 				return;
 			case 2: // Cancel
 				break;
@@ -146,7 +145,8 @@ void VoiceScreen::update() {
 		if (kDown & KEY_X) {
 			Discord::VoiceClient::getInstance().leaveChannel();
 			ScreenManager::getInstance().showToast("Left voice channel");
-			ScreenManager::getInstance().returnToPreviousScreen();
+			// Non serve returnToPreviousScreen() perché isInChannel() ora è false
+			// e ScreenManager tornerà indietro automaticamente nel check all'inizio di update()
 			return;
 		}
 

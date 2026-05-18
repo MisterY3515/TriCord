@@ -7,6 +7,8 @@
 
 namespace Audio {
 
+enum class SystemSound { JOIN, LEAVE };
+
 class AudioManager {
   public:
 	static AudioManager &getInstance();
@@ -16,6 +18,9 @@ class AudioManager {
 
 	// Playback (NDSP) — 16kHz mono, per ascoltare chi parla
 	void queuePcm(const int16_t *pcm, size_t samples);
+	
+	// Suoni di sistema
+	void playSystemSound(SystemSound sound);
 
 	// Capture (MIC) — 16kHz, microfono sempre attivo
 	void startCapture();

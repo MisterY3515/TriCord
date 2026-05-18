@@ -96,6 +96,8 @@ DiscordClient::~DiscordClient() { shutdown(); }
 
 void DiscordClient::shutdown() {
 	Logger::log("DiscordClient::shutdown starting...");
+	
+	// Prima fermiamo il worker thread e svuotiamo la coda
 	{
 		std::lock_guard<std::mutex> lock(queueMutex);
 		stopWorker = true;
@@ -104,7 +106,13 @@ void DiscordClient::shutdown() {
 	if (workerThread.joinable()) {
 		workerThread.join();
 	}
+
+	// Poi disconnettiamo il network thread
 	disconnect();
+	if (networkThread.joinable()) {
+		networkThread.join();
+	}
+
 	Logger::log("DiscordClient::shutdown complete");
 }
 
@@ -988,6 +996,19 @@ void DiscordClient::handleVoiceStateUpdate(const rapidjson::Value &d) {
 				state.self_deaf = Utils::Json::getBool(d, "self_deaf");
 				state.self_video = Utils::Json::getBool(d, "self_video");
 				guild.voiceStates.push_back(std::move(state));
+
+				// Se l'utente corrente viene spostato in un altro canale (da un altro client), disconnetti
+				if (userId == currentUser.id && VoiceClient::getInstance().isInChannel() &&
+				    channelId != VoiceClient::getInstance().getCurrentChannelId()) {
+					Logger::log("[Voice] Current user moved to another channel (%s), disconnecting", channelId.c_str());
+					VoiceClient::getInstance().leaveChannel();
+				}
+			} else {
+				// Se l'utente corrente lascia il canale (o viene rimosso), chiudi il VoiceClient
+				if (userId == currentUser.id) {
+					Logger::log("[Voice] Current user left/kicked from channel, disconnecting VoiceClient");
+					VoiceClient::getInstance().leaveChannel();
+				}
 			}
 			
 			Logger::log("[Voice] User %s %s voice channel %s in guild %s", 
@@ -999,10 +1020,16 @@ void DiscordClient::handleVoiceStateUpdate(const rapidjson::Value &d) {
 }
 
 void DiscordClient::handleVoiceServerUpdate(const rapidjson::Value &d) {
+	std::lock_guard<std::recursive_mutex> lock(clientMutex);
 	std::string token = Utils::Json::getString(d, "token");
 	std::string endpoint = Utils::Json::getString(d, "endpoint");
 	
-	VoiceClient::getInstance().onVoiceServerUpdate(token, endpoint);
+	// Se nel frattempo abbiamo deciso di uscire, ignora
+	if (VoiceClient::getInstance().isInChannel()) {
+		VoiceClient::getInstance().onVoiceServerUpdate(token, endpoint);
+	} else {
+		Logger::log("[Voice] Received VOICE_SERVER_UPDATE but not in a channel locally, ignoring.");
+	}
 }
 
 std::vector<std::string> DiscordClient::getUsersInVoiceChannel(const std::string &channelId) {

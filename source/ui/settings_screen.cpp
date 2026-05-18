@@ -199,6 +199,22 @@ void SettingsScreen::onEnter() {
 	fileLogging.isDeveloper = true;
 	allItems.push_back(fileLogging);
 
+	// ADVANCED
+	allItems.push_back({TR("settings.section.advanced"), "", SettingItemType::SECTION_HEADER});
+
+	SettingItem debugMode;
+	debugMode.label = "Debug Mode";
+	debugMode.description = "Enables advanced developer options and log dumping.";
+	debugMode.type = SettingItemType::TOGGLE;
+	debugMode.value = isDeveloperMode ? 1 : 0;
+	debugMode.min = 0;
+	debugMode.max = 1;
+	debugMode.onUpdate = [this](int val) {
+		this->isDeveloperMode = (val != 0);
+		this->scheduleRefresh = true;
+	};
+	allItems.push_back(debugMode);
+
 	SettingItem sslVerify;
 	sslVerify.label = "SSL Verification";
 	sslVerify.description = "Enable or disable SSL certificate validation";
