@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
 	Logger::log("TriCord - Shutting down...");
 	
 	// Shutdown singletons explicitly before services exit
-	Discord::VoiceClient::getInstance().leaveChannel();
+	Discord::VoiceClient::getInstance().shutdown();
 	UI::ScreenManager::getInstance().shutdown();
 	UI::ImageManager::getInstance().shutdown();
 	Discord::DiscordClient::getInstance().shutdown();

@@ -116,11 +116,11 @@ void DiscordClient::shutdown() {
 	// Poi disconnettiamo il network thread
 	disconnect();
 	
-	// Usiamo detach invece di join per evitare blocchi dell'UI durante lo spegnimento
-	// Il thread si chiuderà da solo non appena uscirà dal loop runNetworkThread
+	// Usiamo join() invece di detach() per assicurarci che il thread sia chiuso
+	// prima della chiusura dei servizi di sistema (socExit).
 	if (networkThread.joinable()) {
-		Logger::log("DiscordClient::shutdown - detaching network thread");
-		networkThread.detach();
+		Logger::log("DiscordClient::shutdown - joining network thread");
+		networkThread.join();
 	}
 	
 	// Cleanup esplicito dei socket e dei buffer

@@ -22,8 +22,10 @@ class VoiceClient {
 	std::recursive_mutex &getMutex() { return voiceMutex; }
 
 	// Ciclo di vita
+	void init();
 	void joinChannel(const std::string &guildId, const std::string &channelId);
 	void leaveChannel();
+	void shutdown();
 	bool isConnected() const;
 	bool isInChannel() const;
 
@@ -67,6 +69,7 @@ class VoiceClient {
 	std::string channelId;
 	std::string voiceToken;
 	std::string voiceEndpoint;
+	std::string selectedEncryptionMode;
 	
 	std::map<std::string, bool> speakingStates;
 	std::string voiceSessionId;
