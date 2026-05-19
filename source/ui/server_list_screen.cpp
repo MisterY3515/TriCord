@@ -349,7 +349,9 @@ void ServerListScreen::update() {
 			       sortedChannels[selectedChannelIndex].type == 4) {
 				selectedChannelIndex++;
 			}
-			selectedChannelIndex = -1;
+			if (selectedChannelIndex >= (int)sortedChannels.size()) {
+				selectedChannelIndex = -1;
+			}
 
 			sm.setLastChannelIndex(sm.getSelectedGuildId(), selectedChannelIndex);
 			sm.setLastChannelScroll(sm.getSelectedGuildId(), channelScrollOffset);

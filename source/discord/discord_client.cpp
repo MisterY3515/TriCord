@@ -1026,89 +1026,110 @@ void DiscordClient::handleSessionsReplace(const rapidjson::Value &d) {
 }
 
 void DiscordClient::handleVoiceStateUpdate(const rapidjson::Value &d) {
-	std::lock_guard<std::recursive_mutex> lock(clientMutex);
 	std::string userId = Utils::Json::getString(d, "user_id");
 	std::string channelId = Utils::Json::getString(d, "channel_id");
 	std::string sessionId = Utils::Json::getString(d, "session_id");
 	std::string guildId = Utils::Json::getString(d, "guild_id");
 
-	if (userId == currentUser.id) {
-		if (channelId.empty()) {
-			VoiceClient::getInstance().leaveChannel();
-		} else {
-			VoiceClient::getInstance().onVoiceStateUpdate(sessionId, guildId, channelId);
+	bool isCurrentUser = false;
+	bool shouldNotifyVoiceState = false;
+	bool shouldLeaveVoice = false;
+	std::string notifySessionId = sessionId;
+	std::string notifyGuildId = guildId;
+	std::string notifyChannelId = channelId;
+	std::string movedToChannelId;
+	std::string leftGuildId;
+
+	{
+		std::lock_guard<std::recursive_mutex> lock(clientMutex);
+		isCurrentUser = (userId == currentUser.id);
+
+		if (!guildId.empty()) {
+			for (auto &guild : guilds) {
+				if (guild.id != guildId) {
+					continue;
+				}
+
+				for (auto it = guild.voiceStates.begin(); it != guild.voiceStates.end();) {
+					if (it->user_id == userId) {
+						it = guild.voiceStates.erase(it);
+					} else {
+						++it;
+					}
+				}
+
+				if (!channelId.empty()) {
+					VoiceState state;
+					state.user_id = userId;
+					state.channel_id = channelId;
+					state.session_id = sessionId;
+					state.mute = Utils::Json::getBool(d, "mute");
+					state.deaf = Utils::Json::getBool(d, "deaf");
+					state.self_mute = Utils::Json::getBool(d, "self_mute");
+					state.self_deaf = Utils::Json::getBool(d, "self_deaf");
+					state.self_video = Utils::Json::getBool(d, "self_video");
+					guild.voiceStates.push_back(state);
+					notifySessionId = guild.voiceStates.back().session_id;
+				}
+
+				Logger::log("[Voice] User %s %s voice channel %s in guild %s", userId.c_str(),
+				            channelId.empty() ? "left" : "joined/moved to", channelId.c_str(), guildId.c_str());
+				break;
+			}
 		}
 	}
-	
-	if (guildId.empty()) return;
-	
-	for (auto &guild : guilds) {
-		if (guild.id == guildId) {
-			std::string userId = Utils::Json::getString(d, "user_id");
-			std::string channelId = Utils::Json::getString(d, "channel_id");
-			
-			for (auto it = guild.voiceStates.begin(); it != guild.voiceStates.end();) {
-				if (it->user_id == userId) {
-					it = guild.voiceStates.erase(it);
-				} else {
-					++it;
-				}
-			}
-			
-			if (!channelId.empty()) {
-				VoiceState state;
-				state.user_id = userId;
-				state.channel_id = channelId;
-				state.session_id = Utils::Json::getString(d, "session_id");
-				state.mute = Utils::Json::getBool(d, "mute");
-				state.deaf = Utils::Json::getBool(d, "deaf");
-				state.self_mute = Utils::Json::getBool(d, "self_mute");
-				state.self_deaf = Utils::Json::getBool(d, "self_deaf");
-				state.self_video = Utils::Json::getBool(d, "self_video");
-				guild.voiceStates.push_back(std::move(state));
 
-				if (userId == currentUser.id) {
-					const bool localVoiceActive = VoiceClient::getInstance().isInChannel();
-					const std::string localChannelId = VoiceClient::getInstance().getCurrentChannelId();
-					if (localVoiceActive && channelId == localChannelId) {
-						VoiceClient::getInstance().onVoiceStateUpdate(guild.voiceStates.back().session_id, guildId,
-						                                             channelId);
-					} else if (localVoiceActive && channelId != localChannelId) {
-						Logger::log("[Voice] Current user moved to another channel (%s), disconnecting local VoiceClient",
-						            channelId.c_str());
-						VoiceClient::getInstance().leaveChannel();
-					}
-				}
-			} else {
-				// Se l'utente corrente lascia il canale (o viene rimosso), chiudi il VoiceClient
-				if (userId == currentUser.id) {
-					if (VoiceClient::getInstance().isInChannel()) {
-						VoiceClient::getInstance().onVoiceStateUpdate("", guildId, "");
-						Logger::log("[Voice] Current user left/kicked from channel, disconnecting VoiceClient");
-						VoiceClient::getInstance().leaveChannel();
-					}
-				}
-			}
-			
-			Logger::log("[Voice] User %s %s voice channel %s in guild %s", 
-						userId.c_str(), channelId.empty() ? "left" : "joined/moved to",
-						channelId.c_str(), guildId.c_str());
-			break;
+	if (!isCurrentUser) {
+		return;
+	}
+
+	if (channelId.empty()) {
+		leftGuildId = guildId;
+		shouldLeaveVoice = true;
+	} else {
+		const bool localVoiceActive = VoiceClient::getInstance().isInChannel();
+		const std::string localChannelId = VoiceClient::getInstance().getCurrentChannelId();
+		if (!localVoiceActive || channelId == localChannelId) {
+			shouldNotifyVoiceState = true;
+		} else {
+			movedToChannelId = channelId;
+			shouldLeaveVoice = true;
 		}
+	}
+
+	if (shouldNotifyVoiceState) {
+		VoiceClient::getInstance().onVoiceStateUpdate(notifySessionId, notifyGuildId, notifyChannelId);
+	}
+
+	if (!movedToChannelId.empty()) {
+		Logger::log("[Voice] Current user moved to another channel (%s), disconnecting local VoiceClient",
+		            movedToChannelId.c_str());
+		VoiceClient::getInstance().leaveChannel();
+		return;
+	}
+
+	if (shouldLeaveVoice) {
+		VoiceClient::getInstance().onVoiceStateUpdate("", leftGuildId, "");
+		Logger::log("[Voice] Current user left/kicked from channel, disconnecting VoiceClient");
+		VoiceClient::getInstance().leaveChannel();
 	}
 }
 
 void DiscordClient::handleVoiceServerUpdate(const rapidjson::Value &d) {
-	std::lock_guard<std::recursive_mutex> lock(clientMutex);
-	std::string token = Utils::Json::getString(d, "token");
-	std::string endpoint = Utils::Json::getString(d, "endpoint");
-	
-	// Se nel frattempo abbiamo deciso di uscire, ignora
-	if (VoiceClient::getInstance().isInChannel()) {
-		VoiceClient::getInstance().onVoiceServerUpdate(token, endpoint);
-	} else {
-		Logger::log("[Voice] Received VOICE_SERVER_UPDATE but not in a channel locally, ignoring.");
+	std::string token;
+	std::string endpoint;
+	{
+		std::lock_guard<std::recursive_mutex> lock(clientMutex);
+		token = Utils::Json::getString(d, "token");
+		endpoint = Utils::Json::getString(d, "endpoint");
 	}
+
+	if (!VoiceClient::getInstance().isInChannel()) {
+		Logger::log("[Voice] Received VOICE_SERVER_UPDATE but not in a channel locally, ignoring.");
+		return;
+	}
+
+	VoiceClient::getInstance().onVoiceServerUpdate(token, endpoint);
 }
 
 std::vector<std::string> DiscordClient::getUsersInVoiceChannel(const std::string &channelId) {

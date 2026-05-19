@@ -20,9 +20,9 @@
 namespace Network {
 
 WebSocketClient::WebSocketClient()
-    : sockfd(-1), state(WebSocketState::DISCONNECTED), port(443), useTLS(true), sslContext(nullptr), sslConfig(nullptr),
-      ctrDrbg(nullptr), entropy(nullptr), serverFd(nullptr), fragmentedOpcode(WebSocketOpcode::CONTINUATION),
-      fragmentedMessageInProgress(false) {}
+    : sockfd(-1), state(WebSocketState::DISCONNECTED), port(443), useTLS(true),
+      fragmentedOpcode(WebSocketOpcode::CONTINUATION), fragmentedMessageInProgress(false), sslContext(nullptr),
+      sslConfig(nullptr), ctrDrbg(nullptr), entropy(nullptr), serverFd(nullptr) {}
 
 WebSocketClient::~WebSocketClient() {
 	disconnect();

@@ -1,21 +1,20 @@
 # TriCord Revanced
 
 ## Warning
-> This project is a speriment where I try to "revance" this program just for fun to do it, don't aspect more actualizations or support and actually optimization might get worse. (but I hope it doesn't happen).
-> Under this warning there is the original TriCord README, all credtis and code goes to 2b-zipper.
-> I think this program is intersting as a example of lightweight Discord Client for limited hardware like the 3DS..
+> This program is for now under developer, so until the 0.1.0 (and after) it can have issues and crash any time.
 
 ![License](https://img.shields.io/badge/license-GPLv3-green)
 ![Platform](https://img.shields.io/badge/platform-Nintendo%203DS-red)
 ![Downloads](https://img.shields.io/github/downloads/MisterY3515/TriCord-Revanced/total?style=flat&color=blue)
-[![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=flat&logo=discord&logoColor=white)](https://discord.gg/quYy9fK8tJ)
 
 Discord client for Nintendo 3DS.
 
+This repository is a maintained fork of TriCord (made by 2b-zipper) focused on trying to add some features like the VC (just for the love of the game, I'm not even sure that is possible)
+
 ## Disclaimer
 
-> **This project is developed for educational purposes only.**
-> This is an unofficial Discord client and is not affiliated with or endorsed by Discord Inc.
+> **This project is unofficial and is provided for educational and experimental use.**
+> It is not affiliated with or endorsed by Discord Inc.
 
 This software is provided **"as is"**, and you use it at your own risk. The use of this application is entirely the user's own responsibility. The developers assume no responsibility for:
 * Any damages, data loss, or account-related issues.
@@ -35,109 +34,120 @@ This software is provided **"as is"**, and you use it at your own risk. The use 
 - Customizable [themes](THEME_FORMAT.md) and internationalization (EN/JA)
 
 ## Custom Themes
-TriCord supports custom themes. You can create your own theme by following the **[Theme Format Specification](THEME_FORMAT.md)**.
+TriCord Revanced supports the original TriCord custom themes. You can create your own theme by following the **[Theme Format Specification](THEME_FORMAT.md)**.
 Check out the [TriCord-Themes](https://github.com/2b-zipper/TriCord-Themes) repository for sample themes.
 
+## Current Status
+
+- Text chat, guild navigation, forums, reactions, embeds, and multi-account support are implemented
+- Theme customization is supported via [THEME_FORMAT.md](THEME_FORMAT.md)
+- Multiple UI languages are included: English, Italian, French, Spanish, German, Japanese, Polish, and Brazilian Portuguese
+- Voice chat support exists in the project, but it is still experimental and may be unstable on real hardware
+- Persistent on-device logs and crash reports are available to help debug runtime failures
+
 ## Installation
-1. Download the latest release (CIA or 3DSX)
-2. Install via FBI (CIA) or place in `/3ds/` (3DSX)
-3. Launch and log in with QR code or email/password
 
-### Login Methods
+1. Download the latest build artifacts: `TriCord.3dsx` or `TriCord.cia`
+2. Install via FBI if using the CIA build, or copy the 3DSX build into `/3ds/`
+3. Launch the app and authenticate
 
-**QR Code** — Scan using the Discord mobile app.
+## Login Methods
 
-**Email / Password** — Enter your credentials directly on the bottom screen.
+- **QR code**: scan the code from the Discord mobile app
+- **Email / password**: direct login from the console UI
+- **Token file**: create `sdmc:/3ds/TriCord/token.txt`, paste the token in plain text, then launch the app
 
-**token.txt** — If you cannot use the above methods, you can log in using your Discord token:
-1. Create a file named `token.txt` at `sdmc:/3ds/TriCord/token.txt`
-2. Paste your Discord token inside (plain text, no extra whitespace)
-3. Launch TriCord — it will automatically read the token, log in, and delete the file
+Never share your Discord token or the local account storage files.
 
-> ⚠️ Never share your Discord token with anyone. Treat it like a password.
+## Controls
 
-### ⚠️ Security Notice
-The account information is stored in `/3ds/TriCord/accounts`. **Although this file is encrypted, never share it with others.** Sharing this file may allow unauthorized access to your Discord account.
+- **Server / channel navigation**: D-Pad to move, `A` to select, `B` to go back, `Y` to enter in VC
+- **Message screen**: D-Pad to scroll, `X` for menu actions, `Y` for text input
+- **General UI**: `SELECT` opens the hamburger menu
+- **Voice overlay**: `START` opens the voice screen when already in a call
 
-## Building from Source
+## Voice Chat
+
+Voice chat is present but still under active stabilization.
+
+- Join is available from voice channels
+- Runtime logging around the voice path is more detailed than the rest of the app
+- If the app crashes while joining voice, collect the files in `sdmc:/3ds/TriCord/`
+
+Relevant files:
+- `session.log`
+- `session-prev.log`
+- `crash_report.txt`
+- `tricord.log`
+
+## Configuration Paths
+
+- Settings and local data: `sdmc:/3ds/TriCord/`
+- Token import file: `sdmc:/3ds/TriCord/token.txt`
+- Theme format reference: [THEME_FORMAT.md](THEME_FORMAT.md)
+
+## Building From Source
 
 ### Prerequisites
-- [devkitPro](https://devkitpro.org/wiki/Getting_Started) with devkitARM
 
-### Build
+- [devkitPro](https://devkitpro.org/wiki/Getting_Started) with `devkitARM`
+- devkitPro 3DS libraries used by the project
+- `makerom` and `bannertool`
+- `libsodium` for 3DS, built by the provided helper script
+
+### Local Build
 
 ```bash
-git clone https://github.com/2b-zipper/TriCord.git
+git clone https://github.com/MisterY3515/TriCord-Revanced.git
 cd TriCord
 make -j$(nproc)
 ```
 
-Output: `TriCord.3dsx`, `TriCord.cia`, `TriCord.elf`
+Expected outputs:
+- `TriCord.3dsx`
+- `TriCord.cia`
+- `TriCord.elf`
+
+### GitHub Actions
+
+The repository also contains a GitHub Actions workflow that builds the project automatically and uploads the generated artifacts.
 
 ## Libraries
 
-### devkitPro Libraries (via devkitPro pacman)
-- [libctru](https://github.com/devkitPro/libctru) (zlib License)
-- [citro3d](https://github.com/devkitPro/citro3d) (zlib License)
-- [citro2d](https://github.com/devkitPro/citro2d) (zlib License)
-- [libcurl](https://curl.se/libcurl/) (curl License)
-- [mbedtls](https://github.com/Mbed-TLS/mbedtls) (Apache-2.0 OR GPL-2.0-or-later)
-- [zlib](https://zlib.net/) (zlib License)
+### devkitPro / external libraries
 
-### Bundled Libraries (included in `library/`)
-- [RapidJSON](https://github.com/Tencent/rapidjson) (MIT License)
-- [stb_image](https://github.com/nothings/stb) (Public Domain / MIT License)
-- [qrcodegen](https://github.com/nayuki/QR-Code-generator) (MIT License)
+- [libctru](https://github.com/devkitPro/libctru)
+- [citro2d](https://github.com/devkitPro/citro2d)
+- [citro3d](https://github.com/devkitPro/citro3d)
+- [libcurl](https://curl.se/libcurl/)
+- [mbed TLS](https://github.com/Mbed-TLS/mbedtls)
+- [zlib](https://zlib.net/)
+- [libopus](https://opus-codec.org/)
+- [libsodium](https://libsodium.org/)
 
-### Additional Resources
-- CA bundle: [cacert-2025-12-02.pem](https://curl.se/docs/caextract.html) (Mozilla's CA certificate bundle)
-- [Twemoji](https://github.com/jdecked/twemoji) (CC-BY 4.0 / MIT License)
+### Bundled libraries
 
-## Usage
+- [RapidJSON](https://github.com/Tencent/rapidjson)
+- [stb_image](https://github.com/nothings/stb)
+- [qrcodegen](https://github.com/nayuki/QR-Code-generator)
 
-**DM/Server/Channel List**
-- D-Pad: Navigate | A: Select | B: Back
+### Additional resources
 
-**Message View**
-- D-Pad: Scroll | B: Back | X: Open Menu | Y: Text input
+- CA bundle from [curl.se](https://curl.se/docs/caextract.html)
+- [Twemoji](https://github.com/jdecked/twemoji)
 
-**General**
-- Start: Exit the app | Select: Open the hamburger menu | L+R: Toggle Debug Log
+## Known Issues
 
-Config: `sdmc:/3ds/TriCord/config.json`
-
-## FAQ
-
-### Is there a possibility of an account ban/suspension?
-Because WebSockets are properly implemented, the risk is relatively lower compared to previous Discord clients for the 3DS. However, since it is an unofficial client, I cannot guarantee that the risk is zero. You should assume that there is always a risk of getting banned. As stated in the disclaimer, I take no responsibility for any account bans or suspensions.
-
-### The app crashes while loading guilds
-This is caused by your account being in too many servers. Please use a different account with fewer guilds. I plan to improve this as much as possible in the future.
-
-### The app is laggy / crashes frequently
-This is due to the 3DS hardware limitations, so there is nothing I can do about it. Especially on the Old 3DS, the RAM is half that of the New 3DS and the CPU is much weaker, making it prone to running slowly. I recommend using a New 3DS for the most comfortable experience. While I might add features exclusive to the New 3DS in the future, rest assured that I will never drop support for the Old 3DS.
-
-### I have a question
-Feel free to ask in our [Discord server](https://discord.gg/quYy9fK8tJ).
-
-### Is there a Voice Chat (VC) feature?
-No, it is currently not available and there are no plans for implementation. However, support for text channels within VC channels is planned for the future.
-
-### I cannot log in with the error "Failed to exchange ticket" or "Login failed: Login failed: 0"
-This appears to be due to SSL verification failing for some reason. In v0.4.0 or later, you can open Settings, press **Y**, and search for `devmode` to temporarily reveal "Developer Options" at the bottom of the list. By toggling **SSL Verification** to **OFF**, you can skip SSL checks and attempt to connect.
->**WARNING:** Disabling SSL verification lowers security and makes you vulnerable to Man-in-the-Middle (MITM) attacks. If you have any security concerns, do not use this option. I do not accept bug reports or provide support for settings within the Developer Options.
-
-### I found a bug
-Please report it by opening a [GitHub Issue](https://github.com/2b-zipper/TriCord/issues) or by visiting the bug-reports channel in our Discord server.
-
-### I want to add a translation
-You are more than welcome to! Please translate [en_US.json](https://github.com/2b-zipper/TriCord/blob/main/romfs/lang/en_US.json) into the language you want to add and submit a pull request.
+- Large accounts and large guilds can still stress RAM on old hardware
+- Voice chat is experimental and may still crash or disconnect unexpectedly
+- Discord API changes can break features without warning
 
 ## License
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+
+This project is licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE).
 
 ## Credits
-- [2b-zipper](https://github.com/2b-zipper) for the main development
+- [2b-zipper](https://github.com/2b-zipper) for the main development of the original TriCord
 - [Str4ky](https://github.com/Str4ky) for the French translation
 - [AverageJohtonian](https://github.com/AverageJohtonian) for the Spanish translation
 - [RossoDev](https://github.com/RossoDev) for the Italian translation

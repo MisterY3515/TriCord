@@ -1,0 +1,39 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo dkp-pacman -Syu --noconfirm
+          sudo dkp-pacman -S --noconfirm 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-libopus 3ds-citro3d 3ds-citro2d 3ds-libctru 3ds-dev makerom bannertool
+
+      - name: Build libsodium
+        run: |
+          bash tools/setup_libsodium.sh
+
+      - name: Build TriCord
+        run: |
+          make cia
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: TriCord-build
+          path: |
+            TriCord.3dsx
+            TriCord.cia

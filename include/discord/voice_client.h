@@ -76,6 +76,7 @@ class VoiceClient {
 	
 	std::map<std::string, bool> speakingStates;
 	std::string voiceSessionId;
+	std::string currentUserId;
 	uint32_t ssrc;
 
 	// Encryption
@@ -93,6 +94,8 @@ class VoiceClient {
 	bool muted;
 	bool deafened;
 	bool shuttingDown;
+	bool pendingLeave;
+	bool pendingLeaveNotifyGateway;
 
 	int heartbeatInterval;
 	uint64_t lastHeartbeatTime;
@@ -106,6 +109,7 @@ class VoiceClient {
 	std::deque<int16_t> micAccumulator;
 	std::vector<uint8_t> decodeBuf;
 	std::vector<uint8_t> encodeBuf;
+	std::vector<int16_t> pcmBuf;
 	double captureResamplePosition;
 
 	// Funzioni di supporto
@@ -113,6 +117,7 @@ class VoiceClient {
 	void handleVoiceWsBinaryMessage(std::vector<uint8_t> &msg);
 	void tryStartVoiceConnectionLocked();
 	void leaveChannelLocked(bool notifyGateway);
+	void requestLeaveLocked(bool notifyGateway, const char *reason);
 	void resetConnectionStateLocked();
 	bool initializeCodecsLocked();
 	void destroyCodecsLocked();
