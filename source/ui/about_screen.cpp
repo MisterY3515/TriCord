@@ -158,6 +158,10 @@ void AboutScreen::renderBottom(C3D_RenderTarget *target) {
 	drawLib("libopus, libsodium");
 	drawLib("Twemoji Assets");
 
+	drawSectionTitle("Voice Compatibility");
+	drawEntry("Transport Voice", "Opus 48kHz + RTP/UDP with legacy/AEAD transport encryption");
+	drawEntry("DAVE / MLS / E2EE", "Not implemented (modern Discord sessions may refuse voice)");
+
 	drawSectionTitle("Source Code");
 	drawText(x + 8.0f, y, 0.5f, 0.36f, 0.36f, ScreenManager::colorTextMuted(), "Licensed under GPL v3.0");
 	y += 13.0f;
