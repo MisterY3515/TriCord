@@ -74,17 +74,14 @@ VoiceClient::~VoiceClient() {
 
 void VoiceClient::init() {
 	std::lock_guard<std::mutex> lock(voiceMutex);
-	(void)lock;
+	if (sodium_init() < 0) {
+		Logger::log("[Voice] Failed to initialize libsodium");
+	}
 }
 
 bool VoiceClient::initializeCodecsLocked() {
 	if (decoder && encoder) {
 		return true;
-	}
-
-	if (sodium_init() < 0) {
-		Logger::log("[Voice] Failed to initialize libsodium");
-		return false;
 	}
 
 	int decodeErr = OPUS_OK;
@@ -285,35 +282,30 @@ void VoiceClient::shutdown() {
 	Logger::log("[Voice] Shutdown complete");
 }
 
-void VoiceClient::onVoiceStateUpdate(const std::string &sessionId, const std::string &guildId, const std::string &channelId) {
+void VoiceClient::onVoiceStateUpdate(const std::string &sessionId, const std::string &guildId,
+                                    const std::string &channelId) {
 	std::lock_guard<std::mutex> lock(voiceMutex);
-	Logger::setCrashContext("voice: gateway state update local=%s incoming=%s", this->channelId.c_str(), channelId.c_str());
-	if (this->channelId.empty()) {
-		return;
+	if (shuttingDown) return;
+
+	Logger::log("[Voice] onVoiceStateUpdate: session=%s, guild=%s, channel=%s",
+	            sessionId.c_str(), guildId.c_str(), channelId.c_str());
+
+	if (!sessionId.empty()) {
+		this->voiceSessionId = sessionId;
+		this->hasVoiceStateInfo = true;
 	}
 
-	if (!guildId.empty() && !this->guildId.empty() && guildId != this->guildId) {
-		Logger::log("[Voice] Ignoring Voice State Update for different guild %s (expected %s)", guildId.c_str(),
-		            this->guildId.c_str());
-		return;
+	if (!channelId.empty()) {
+		this->channelId = channelId;
+		this->guildId = guildId;
+		this->currentUserId = DiscordClient::getInstance().getCurrentUser().id;
+	} else {
+		// If channelId is empty, it means we left or were kicked
+		if (this->channelId == channelId && !channelId.empty()) {
+			leaveChannelLocked(false);
+		}
 	}
 
-	if (channelId.empty()) {
-		voiceSessionId.clear();
-		hasVoiceStateInfo = false;
-		return;
-	}
-
-	if (channelId != this->channelId) {
-		Logger::log("[Voice] Ignoring Voice State Update for channel %s while waiting for %s", channelId.c_str(),
-		            this->channelId.c_str());
-		return;
-	}
-
-	this->guildId = guildId;
-	voiceSessionId = sessionId;
-	hasVoiceStateInfo = !voiceSessionId.empty();
-	Logger::log("[Voice] Received Voice State session_id for channel %s", channelId.c_str());
 	tryStartVoiceConnectionLocked();
 }
 
@@ -377,9 +369,10 @@ void VoiceClient::handleVoiceWsMessage(std::string &msg) {
 		}
 		break;
 	case 2: { // Ready
-		if (!data.HasMember("ssrc") || !data.HasMember("ip") || !data.HasMember("port") || !data.HasMember("modes") ||
-		    !data["modes"].IsArray()) {
-			requestLeaveLocked(true, "voice ready payload missing required fields");
+		if (!data.HasMember("ssrc") || !data.HasMember("ip") || !data["ip"].IsString() ||
+		    !data.HasMember("port") || !data["port"].IsInt() ||
+		    !data.HasMember("modes") || !data["modes"].IsArray()) {
+			requestLeaveLocked(true, "voice ready payload missing required fields or invalid types");
 			return;
 		}
 
