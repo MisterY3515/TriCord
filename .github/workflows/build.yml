@@ -19,7 +19,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          sudo dkp-pacman -Syu --noconfirm
+          sudo sed -i 's/^#XferCommand = \/usr\/bin\/curl.*$/XferCommand = \/usr\/bin\/curl -A "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/120.0.0.0 Safari\/537.36" -C - -f %u > %o/' /opt/devkitpro/pacman/etc/pacman.conf || true
+          sudo dkp-pacman -Syu --noconfirm || true
           sudo dkp-pacman -S --noconfirm 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-libopus 3ds-dev 3dstools
 
       - name: Build libsodium
