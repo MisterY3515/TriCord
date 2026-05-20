@@ -4,6 +4,7 @@
 #include "discord/discord_client.h"
 #include "discord/voice_client.h"
 #include "log.h"
+#include "core/updater.h"
 #include "network/http_client.h"
 #include "network/network_manager.h"
 #include "ui/image_manager.h"
@@ -55,6 +56,12 @@ int main(int argc, char **argv) {
 	Discord::DiscordClient::getInstance().init();
 	Discord::VoiceClient::getInstance().init();
 	UI::ScreenManager::getInstance().init();
+
+	// Check for updates in the background
+	threadCreate([](void*) {
+		Updater::getInstance().checkForUpdates(true);
+	}, nullptr, 16 * 1024, 0x1A, -2, false);
+
 	Logger::setCrashContext("main loop: entering aptMainLoop");
 
 	while (aptMainLoop()) {
@@ -67,7 +74,7 @@ int main(int argc, char **argv) {
 		Logger::setCrashContext("main loop: VoiceClient::update");
 		Discord::VoiceClient::getInstance().update();
 
-	if (UI::ScreenManager::getInstance().shouldCloseApplication()) {
+		if (UI::ScreenManager::getInstance().shouldCloseApplication()) {
 			break;
 		}
 

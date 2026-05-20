@@ -23,7 +23,7 @@
 Config::Config()
     : currentAccountIndex(-1), timezoneOffset(0), language("en_US"), themeType(0), typingIndicatorEnabled(true),
       fileLoggingEnabled(false), disclaimerAccepted(false), sslVerificationDisabled(false), showAvatars(true),
-      showServerIcons(true), voiceChatsEnabled(true), daveEnabled(false), customThemeEnabled(false), selectedThemeName("") {
+      showServerIcons(true), voiceChatsEnabled(true), daveEnabled(false), receivePreReleases(false), customThemeEnabled(false), selectedThemeName("") {
 	customTheme = getDarkPreset();
 	customTheme.name = "Custom Theme";
 }
@@ -243,6 +243,9 @@ void Config::loadSettings() {
 			if (doc.HasMember("dave_enabled") && doc["dave_enabled"].IsBool()) {
 				daveEnabled = doc["dave_enabled"].GetBool();
 			}
+			if (doc.HasMember("receive_prereleases") && doc["receive_prereleases"].IsBool()) {
+				receivePreReleases = doc["receive_prereleases"].GetBool();
+			}
 		} else {
 			saveSettings();
 		}
@@ -287,6 +290,8 @@ void Config::saveSettings() {
 	writer.Bool(voiceChatsEnabled);
 	writer.Key("dave_enabled");
 	writer.Bool(daveEnabled);
+	writer.Key("receive_prereleases");
+	writer.Bool(receivePreReleases);
 	writer.EndObject();
 
 	std::string settingsPath = std::string(CONFIG_DIR_PATH) + "/settings.json";
@@ -306,6 +311,11 @@ void Config::setVoiceChatsEnabled(bool enabled) {
 
 void Config::setDaveEnabled(bool enabled) {
 	daveEnabled = enabled;
+	saveSettings();
+}
+
+void Config::setReceivePreReleases(bool enabled) {
+	receivePreReleases = enabled;
 	saveSettings();
 }
 

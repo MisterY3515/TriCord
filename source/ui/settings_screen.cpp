@@ -1,7 +1,8 @@
 #include "ui/settings_screen.h"
 #include "core/config.h"
 #include "core/i18n.h"
-#include "log.h"
+#include "core/log.h"
+#include "core/updater.h"
 #include "ui/screen_manager.h"
 #include "utils/message_utils.h"
 #include "discord/avatar_cache.h"
@@ -225,19 +226,6 @@ void SettingsScreen::onEnter() {
 	// ADVANCED
 	allItems.push_back({TR("settings.section.advanced"), "", SettingItemType::SECTION_HEADER});
 
-	SettingItem debugMode;
-	debugMode.label = "Debug Mode";
-	debugMode.description = "Enables advanced developer options and log dumping.";
-	debugMode.type = SettingItemType::TOGGLE;
-	debugMode.value = isDeveloperMode ? 1 : 0;
-	debugMode.min = 0;
-	debugMode.max = 1;
-	debugMode.onUpdate = [this](int val) {
-		this->isDeveloperMode = (val != 0);
-		this->scheduleRefresh = true;
-	};
-	allItems.push_back(debugMode);
-
 	SettingItem sslVerify;
 	sslVerify.label = "SSL Verification";
 	sslVerify.description = "Enable or disable SSL certificate validation";
@@ -248,6 +236,31 @@ void SettingsScreen::onEnter() {
 	sslVerify.valueFormatter = [](int val) { return (val == 0) ? TR("common.disabled") : TR("common.enabled"); };
 	sslVerify.onUpdate = [](int val) { Config::getInstance().setSslVerificationDisabled(val == 0); };
 	allItems.push_back(sslVerify);
+
+	// UPDATES
+	allItems.push_back({"Updates", "", SettingItemType::SECTION_HEADER});
+
+	SettingItem checkForUpdates;
+	checkForUpdates.label = "Check for Updates";
+	checkForUpdates.description = "Check GitHub for the latest TriCord releases.";
+	checkForUpdates.type = SettingItemType::ACTION;
+	checkForUpdates.action = []() {
+		ScreenManager::getInstance().showToast("Checking for updates...");
+		// Trigger updater
+		triggerManualUpdateCheck();
+	};
+	allItems.push_back(checkForUpdates);
+
+	SettingItem receivePreReleases;
+	receivePreReleases.label = "Include Pre-releases";
+	receivePreReleases.description = "If enabled, beta/alpha versions will be included when checking for updates.";
+	receivePreReleases.type = SettingItemType::TOGGLE;
+	receivePreReleases.value = Config::getInstance().isReceivePreReleasesEnabled() ? 1 : 0;
+	receivePreReleases.min = 0;
+	receivePreReleases.max = 1;
+	receivePreReleases.valueFormatter = [](int val) { return (val == 1) ? TR("common.enabled") : TR("common.disabled"); };
+	receivePreReleases.onUpdate = [](int val) { Config::getInstance().setReceivePreReleases(val == 1); };
+	allItems.push_back(receivePreReleases);
 
 	SettingItem chatLogging;
 	chatLogging.label = "Dump Logs to Chat";
@@ -284,9 +297,6 @@ void SettingsScreen::refreshVisibleItems() {
 	std::transform(lowerQuery.begin(), lowerQuery.end(), lowerQuery.begin(), ::tolower);
 
 	for (auto &item : allItems) {
-		if (item.isDeveloper && !isDeveloperMode) {
-			continue;
-		}
 
 		if (item.type == SettingItemType::SECTION_HEADER) {
 			if (lowerQuery.empty()) {

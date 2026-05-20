@@ -65,13 +65,13 @@ static uint32_t randombytes_3ds_random(void) {
 	PS_GenerateRandomBytes(&val, sizeof(val));
 	return val;
 }
-static struct randombytes_implementation randombytes_3ds_implementation = {
-    randombytes_3ds_name, // implementation_name
+static struct randombytes_implementation randombytes_3ds_impl = {
+    randombytes_3ds_name,   // implementation_name
     randombytes_3ds_random, // random
-    NULL, // stir
-    NULL, // uniform
-    randombytes_3ds_buf, // buf
-    NULL, // close
+    NULL,                   // stir
+    NULL,                   // uniform
+    randombytes_3ds_buf,    // buf
+    NULL,                   // close
 };
 
 VoiceClient &VoiceClient::getInstance() {
@@ -95,20 +95,12 @@ VoiceClient::~VoiceClient() {
 
 void VoiceClient::init() {
 	std::lock_guard<std::mutex> lock(voiceMutex);
-<<<<<<< Updated upstream
+	randombytes_set_implementation(&randombytes_3ds_impl);
 	if (sodium_init() < 0) {
 		Logger::log("[Voice] Failed to initialize libsodium");
+	} else {
+		Logger::log("[Voice] libsodium initialized with 3DS RNG");
 	}
-=======
-<<<<<<< Updated upstream
-	(void)lock;
-=======
-	randombytes_set_implementation(&randombytes_3ds_implementation);
-	if (sodium_init() < 0) {
-		Logger::log("[Voice] Failed to initialize libsodium");
-	}
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 }
 
 bool VoiceClient::initializeCodecsLocked() {
@@ -630,14 +622,14 @@ void VoiceClient::resampleCaptureToDiscordRateLocked() {
 
 void VoiceClient::processIncomingAudioLocked() {
 	Logger::setCrashContext("voice: process incoming audio");
-	uint8_t packet[4096];
+	std::vector<uint8_t> packet(4096);
 	int len = 0;
 	if (pcmBuf.size() < kMaxDecodeFrameSamples) {
 		pcmBuf.resize(kMaxDecodeFrameSamples);
 	}
 
-	while ((len = udp.recv(packet, sizeof(packet), 0)) > 0) {
-		if (!decryptAudioPacket(packet, static_cast<size_t>(len), decodeBuf)) {
+	while ((len = udp.recv(packet.data(), packet.size(), 0)) > 0) {
+		if (!decryptAudioPacket(packet.data(), static_cast<size_t>(len), decodeBuf)) {
 			continue;
 		}
 
@@ -687,19 +679,19 @@ void VoiceClient::processOutgoingAudioLocked() {
 	}
 
 	while (micAccumulator.size() >= kDiscordFrameSamples && now + 1 >= nextTransmitTime) {
-		int16_t frame[kDiscordFrameSamples];
+		std::vector<int16_t> frame(kDiscordFrameSamples);
 		for (int i = 0; i < kDiscordFrameSamples; i++) {
 			frame[i] = micAccumulator.front();
 			micAccumulator.pop_front();
 		}
 
-		uint8_t opusBuf[1500];
-		const int encodedLen = opus_encode(encoder, frame, kDiscordFrameSamples, opusBuf, sizeof(opusBuf));
+		std::vector<uint8_t> opusBuf(1500);
+		const int encodedLen = opus_encode(encoder, frame.data(), kDiscordFrameSamples, opusBuf.data(), opusBuf.size());
 		if (encodedLen <= 0) {
 			continue;
 		}
 
-		encryptAudioPacket(opusBuf, static_cast<size_t>(encodedLen), encodeBuf);
+		encryptAudioPacket(opusBuf.data(), static_cast<size_t>(encodedLen), encodeBuf);
 		if (!encodeBuf.empty()) {
 			udp.send(encodeBuf.data(), encodeBuf.size());
 		}

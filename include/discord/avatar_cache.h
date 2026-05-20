@@ -1,14 +1,7 @@
-<<<<<<< Updated upstream
-#include "utils/image_utils.h"
-=======
 #ifndef AVATAR_CACHE_H
 #define AVATAR_CACHE_H
 
-<<<<<<< Updated upstream
-=======
 #include "utils/image_utils.h"
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 #include <citro2d.h>
 #include <map>
 #include <mutex>

@@ -1,6 +1,8 @@
 #include "utils/file_utils.h"
+#include "core/log.h"
 #include <cstdio>
 #include <vector>
+#include <curl/curl.h>
 
 namespace Utils {
 namespace File {
@@ -59,6 +61,45 @@ bool writeFile(const std::string &path, const std::string &data) {
 	}
 	fputs(data.c_str(), fp);
 	fclose(fp);
+	return true;
+}
+
+static size_t writeDataCallback(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+	size_t written = fwrite(ptr, size, nmemb, stream);
+	return written;
+}
+
+bool downloadFile(const std::string &url, const std::string &path) {
+	CURL *curl = curl_easy_init();
+	if (!curl) return false;
+
+	FILE *fp = fopen(path.c_str(), "wb");
+	if (!fp) {
+		curl_easy_cleanup(curl);
+		return false;
+	}
+
+	curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeDataCallback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // Disable SSL verification for simplicity on 3DS
+	curl_easy_setopt(curl, CURLOPT_USERAGENT, "TriCord-Updater/1.0");
+
+	CURLcode res = curl_easy_perform(curl);
+	
+	long httpCode = 0;
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+	fclose(fp);
+	curl_easy_cleanup(curl);
+
+	if (res != CURLE_OK || httpCode >= 400) {
+		remove(path.c_str());
+		Logger::log("[Updater] Download failed: %s (HTTP %ld)", curl_easy_strerror(res), httpCode);
+		return false;
+	}
+
 	return true;
 }
 

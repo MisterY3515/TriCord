@@ -121,6 +121,9 @@ class Config {
 	bool isDaveEnabled() const { return daveEnabled; }
 	void setDaveEnabled(bool enabled);
 
+	bool isReceivePreReleasesEnabled() const { return receivePreReleases; }
+	void setReceivePreReleases(bool enabled);
+
 	bool isShowAvatarsEnabled() const { return showAvatars; }
 	void setShowAvatarsEnabled(bool enabled);
 	bool isShowServerIconsEnabled() const { return showServerIcons; }
@@ -153,6 +156,7 @@ class Config {
 	bool showServerIcons;
 	bool voiceChatsEnabled;
 	bool daveEnabled;
+	bool receivePreReleases;
 
 	bool customThemeEnabled;
 	std::string selectedThemeName;

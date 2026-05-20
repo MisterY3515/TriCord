@@ -1,14 +1,7 @@
-<<<<<<< Updated upstream
-#include "utils/image_utils.h"
-=======
 #ifndef EMOJI_MANAGER_H
 #define EMOJI_MANAGER_H
 
-<<<<<<< Updated upstream
-=======
 #include "utils/image_utils.h"
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 #include <citro2d.h>
 #include <deque>
 #include <map>
