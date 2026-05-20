@@ -147,6 +147,9 @@ The repository also contains a GitHub Actions workflow that builds the project a
 This project is licensed under the GNU General Public License v3.0. See [LICENSE](LICENSE).
 
 ## Credits
+- [MisterY3515](https://github.com/MisterY3515) for the main development of TriCord Revanced
+
+## Original TriCord Credits
 - [2b-zipper](https://github.com/2b-zipper) for the main development of the original TriCord
 - [Str4ky](https://github.com/Str4ky) for the French translation
 - [AverageJohtonian](https://github.com/AverageJohtonian) for the Spanish translation

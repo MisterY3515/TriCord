@@ -778,15 +778,24 @@ void VoiceClient::update() {
 
 		uint8_t buf[256];
 		const int len = udp.recv(buf, sizeof(buf), 0);
+		if (len > 0) {
+			Logger::log("[Voice] IP discovery received %d bytes", len);
+		}
 		if (len >= 74) {
 			char ip[65] = {0};
 			memcpy(ip, buf + 8, 64);
-			uint16_t portBE = 0;
-			memcpy(&portBE, buf + 72, sizeof(portBE));
-			const uint16_t discoveredPort = __builtin_bswap16(portBE);
+			uint16_t portLE = 0;
+			memcpy(&portLE, buf + 72, sizeof(portLE));
+			
+			// Port is little-endian from Discord
+			// On 3DS (which is little-endian), portLE is already the correct value.
+			const uint16_t discoveredPort = portLE; 
+			
 			if (ip[0] != '\0' && discoveredPort > 0) {
 				Logger::log("[Voice] IP discovered: %s:%u", ip, discoveredPort);
 				sendSelectProtocol(ip, discoveredPort);
+			} else {
+				Logger::log("[Voice] Invalid IP/port discovered: %s:%u", ip, discoveredPort);
 			}
 		}
 	} else if (state == State::READY) {

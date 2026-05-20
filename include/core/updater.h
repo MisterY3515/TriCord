@@ -14,6 +14,7 @@ public:
 
 	// Performs the actual download and install.
 	void performUpdate(const std::string& downloadUrl, const std::string& assetName);
+	bool installCia(const std::string& path);
 
 private:
 	Updater() = default;

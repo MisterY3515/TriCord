@@ -338,6 +338,8 @@ void ScreenManager::render() {
 		drawHamburgerButton();
 	}
 
+	renderConnectionIndicator();
+
 	if (toastTimer > 0) {
 		drawToast();
 	}
@@ -388,6 +390,57 @@ void ScreenManager::renderVoiceOverlay() {
 	
 	// Separator
 	C2D_DrawRectSolid(halfW, barY, 0.92f, 1.0f, barH, C2D_Color32(0, 0, 0, 100));
+}
+
+void ScreenManager::renderConnectionIndicator() {
+	auto state = Discord::DiscordClient::getInstance().getState();
+	
+	bool isConnected = (state == Discord::ConnectionState::READY);
+	bool isConnecting = (state == Discord::ConnectionState::CONNECTING || 
+	                     state == Discord::ConnectionState::CONNECTED_WS || 
+	                     state == Discord::ConnectionState::IDENTIFYING || 
+	                     state == Discord::ConnectionState::AUTHENTICATING ||
+	                     state == Discord::ConnectionState::RECONNECTING);
+	bool isError = (state == Discord::ConnectionState::DISCONNECTED_ERROR);
+	
+	// Draw WiFi bars (liniette) on top-left of bottom screen (next to hamburger)
+	float startX = 40.0f;
+	float startY = 20.0f;
+	float barWidth = 3.0f;
+	float spacing = 2.0f;
+	
+	u32 activeColor = C2D_Color32(0, 255, 0, 255);
+	if (isConnecting) activeColor = C2D_Color32(255, 200, 0, 255);
+	if (isError) activeColor = C2D_Color32(255, 0, 0, 255);
+	
+	u32 inactiveColor = C2D_Color32(100, 100, 100, 255);
+	
+	for (int i = 0; i < 3; i++) {
+		float barHeight = 6.0f + (i * 4.0f);
+		float bx = startX + (i * (barWidth + spacing));
+		float by = startY - barHeight;
+		
+		bool fill = false;
+		if (isConnected) fill = true;
+		else if (isConnecting && i < 2) fill = true; // Two bars for connecting
+		else if (!isError && i == 0) fill = true;    // One bar if just idle
+		
+		C2D_DrawRectSolid(bx, by, 0.9f, barWidth, barHeight, fill ? activeColor : inactiveColor);
+	}
+	
+	// Full screen error overlay if disconnected/error
+	if (isError) {
+		C2D_DrawRectSolid(0, 0, 0.95f, 320, 240, C2D_Color32(0, 0, 0, 230)); // Dark overlay
+		auto& i18n = I18n::getInstance();
+		std::string errText = i18n.get("updater.error_network"); // "Nessuna Connessione di Rete"
+		
+		C2D_TextBuf buf = C2D_TextBufNew(256);
+		C2D_Text text;
+		C2D_TextParse(&text, buf, errText.c_str());
+		C2D_TextOptimize(&text);
+		C2D_DrawText(&text, C2D_WithColor | C2D_AlignCenter, 160.0f, 110.0f, 0.96f, 0.6f, 0.6f, C2D_Color32(255, 50, 50, 255));
+		C2D_TextBufDelete(buf);
+	}
 }
 
 void ScreenManager::toggleDebugOverlay() { debugOverlayEnabled = !debugOverlayEnabled; }

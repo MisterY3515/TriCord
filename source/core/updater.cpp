@@ -4,14 +4,18 @@
 #include "network/http_client.h"
 #include "utils/file_utils.h"
 #include "ui/screen_manager.h"
+#include "ui/update_screen.h"
 #include <3ds.h>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <vector>
 #include <sstream>
+#include <cctype>
+#include "core/i18n.h"
+#include "utils/string_utils.h"
 
 // Helper to install CIA from a local file
-static bool installCia(const std::string& path) {
+bool Updater::installCia(const std::string& path) {
 	Handle fileHandle;
 	FS_Archive sdmcArchive = 0;
 	FS_Path archPath = fsMakePath(PATH_EMPTY, "");
@@ -86,17 +90,75 @@ Updater& Updater::getInstance() {
 	return instance;
 }
 
+struct Version {
+	int major = 0;
+	int minor = 0;
+	int patch = 0;
+	std::string preReleaseType;
+	int preReleaseNum = 0;
+	bool isPreRelease = false;
+};
+
+static Version parseVersion(const std::string& vstr) {
+	Version v;
+	std::string s = vstr;
+	if (!s.empty() && s[0] == 'v') s = s.substr(1);
+	
+	try {
+		size_t pos = 0;
+		v.major = std::stoi(s, &pos);
+		if (pos < s.length() && s[pos] == '.') {
+			s = s.substr(pos + 1);
+			v.minor = std::stoi(s, &pos);
+			if (pos < s.length() && s[pos] == '.') {
+				s = s.substr(pos + 1);
+				v.patch = std::stoi(s, &pos);
+			}
+		}
+		
+		if (pos < s.length()) {
+			v.isPreRelease = true;
+			std::string suffix = s.substr(pos);
+			if (!suffix.empty() && suffix[0] == '-') suffix = suffix.substr(1);
+			
+			size_t digitPos = 0;
+			while (digitPos < suffix.length() && !isdigit(suffix[digitPos])) {
+				digitPos++;
+			}
+			v.preReleaseType = suffix.substr(0, digitPos);
+			if (digitPos < suffix.length()) {
+				v.preReleaseNum = std::stoi(suffix.substr(digitPos));
+			}
+		}
+	} catch (...) {
+		// Ignore parsing errors
+	}
+	return v;
+}
+
+bool operator<(const Version& a, const Version& b) {
+	if (a.major != b.major) return a.major < b.major;
+	if (a.minor != b.minor) return a.minor < b.minor;
+	if (a.patch != b.patch) return a.patch < b.patch;
+	
+	if (a.isPreRelease && !b.isPreRelease) return true;
+	if (!a.isPreRelease && b.isPreRelease) return false;
+	
+	if (a.isPreRelease && b.isPreRelease) {
+		if (a.preReleaseType != b.preReleaseType) return a.preReleaseType < b.preReleaseType;
+		return a.preReleaseNum < b.preReleaseNum;
+	}
+	return false;
+}
+
 bool Updater::isNewerVersion(const std::string& currentVer, const std::string& remoteVer) {
-	// Simple string comparison for versions like "v0.0.8" vs "v0.0.9"
-	std::string c = currentVer;
-	std::string r = remoteVer;
-	if (!c.empty() && c[0] == 'v') c = c.substr(1);
-	if (!r.empty() && r[0] == 'v') r = r.substr(1);
-	// Basic lexicographical check for now (assumes well-formed major.minor.micro)
-	return r > c;
+	Version c = parseVersion(currentVer);
+	Version r = parseVersion(remoteVer);
+	return c < r;
 }
 
 void Updater::checkForUpdates(bool background) {
+	auto& i18n = I18n::getInstance();
 	Network::HttpClient client;
 	client.setHeader("User-Agent", "TriCord-Updater/1.0");
 	client.setVerifySSL(false);
@@ -104,7 +166,7 @@ void Updater::checkForUpdates(bool background) {
 	auto resp = client.get("https://api.github.com/repos/MisterY3515/TriCord-Revanced/releases");
 	if (!resp.success || resp.statusCode >= 400) {
 		if (!background) {
-			UI::ScreenManager::getInstance().showToast("Failed to fetch updates.");
+			UI::ScreenManager::getInstance().showToast(i18n.get("updater.failed_fetch"));
 		}
 		return;
 	}
@@ -113,7 +175,7 @@ void Updater::checkForUpdates(bool background) {
 	doc.Parse(resp.body.c_str());
 	if (doc.HasParseError() || !doc.IsArray() || doc.Size() == 0) {
 		if (!background) {
-			UI::ScreenManager::getInstance().showToast("Failed to parse updates.");
+			UI::ScreenManager::getInstance().showToast(i18n.get("updater.failed_parse"));
 		}
 		return;
 	}
@@ -131,8 +193,9 @@ void Updater::checkForUpdates(bool background) {
 		break;
 	}
 
+
 	if (!latestRelease) {
-		if (!background) UI::ScreenManager::getInstance().showToast("No suitable releases found.");
+		if (!background) UI::ScreenManager::getInstance().showToast(i18n.get("updater.no_releases"));
 		return;
 	}
 
@@ -160,44 +223,33 @@ void Updater::checkForUpdates(bool background) {
 
 		if (!downloadUrl.empty()) {
 			if (background) {
-				UI::ScreenManager::getInstance().showToast("Update " + remoteTag + " available! Check Settings.");
+				// Show a prompt to download
+				std::string title = i18n.get("updater.title");
+				std::string desc = Utils::String::format(i18n.get("updater.desc"), remoteTag);
+				
+				UI::ScreenManager::getInstance().showModal(title, desc, 
+					{i18n.get("common.cancel"), i18n.get("common.ok")},
+					[downloadUrl, targetAssetName](int buttonIndex) {
+						if (buttonIndex == 1) { // OK
+							// Instead of directly performUpdate, we should probably show a dedicated UpdateScreen
+							// but for now, we'll start it directly here.
+							Updater::getInstance().performUpdate(downloadUrl, targetAssetName);
+						}
+					});
 			} else {
 				// We found an update! Let's download it directly
-				UI::ScreenManager::getInstance().showToast("Downloading " + remoteTag + "...");
-				performUpdate(downloadUrl, targetAssetName);
+				Updater::getInstance().performUpdate(downloadUrl, targetAssetName);
 			}
 		} else {
-			if (!background) UI::ScreenManager::getInstance().showToast("Release found, but no matching asset.");
+			if (!background) UI::ScreenManager::getInstance().showToast(i18n.get("updater.no_asset"));
 		}
 	} else {
-		if (!background) UI::ScreenManager::getInstance().showToast("TriCord is up to date.");
+		if (!background) UI::ScreenManager::getInstance().showToast(i18n.get("updater.up_to_date"));
 	}
 }
 
 void Updater::performUpdate(const std::string& downloadUrl, const std::string& assetName) {
-	bool is3dsx = envIsHomebrew();
-	
-	if (is3dsx) {
-		std::string path = "sdmc:/3ds/TriCord/TriCord.3dsx";
-		if (Utils::File::downloadFile(downloadUrl, path)) {
-			UI::ScreenManager::getInstance().showToast("Update complete! Please restart Homebrew Launcher.");
-		} else {
-			UI::ScreenManager::getInstance().showToast("Update download failed.");
-		}
-	} else {
-		std::string tempPath = "sdmc:/3ds/TriCord/update.cia";
-		if (Utils::File::downloadFile(downloadUrl, tempPath)) {
-			UI::ScreenManager::getInstance().showToast("Installing CIA...");
-			if (installCia(tempPath)) {
-				remove(tempPath.c_str());
-				UI::ScreenManager::getInstance().showToast("Install complete! Please restart the app.");
-			} else {
-				UI::ScreenManager::getInstance().showToast("CIA install failed.");
-			}
-		} else {
-			UI::ScreenManager::getInstance().showToast("Update download failed.");
-		}
-	}
+	UI::ScreenManager::getInstance().push(std::make_shared<UI::UpdateScreen>(downloadUrl, assetName));
 }
 
 extern "C" void triggerManualUpdateCheck() {

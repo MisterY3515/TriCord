@@ -69,7 +69,15 @@ static size_t writeDataCallback(void *ptr, size_t size, size_t nmemb, FILE *stre
 	return written;
 }
 
-bool downloadFile(const std::string &url, const std::string &path) {
+static int xferinfoCallback(void *clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) {
+	auto* callback = static_cast<std::function<void(size_t, size_t)>*>(clientp);
+	if (callback && *callback) {
+		(*callback)(static_cast<size_t>(dlnow), static_cast<size_t>(dltotal));
+	}
+	return 0;
+}
+
+bool downloadFile(const std::string &url, const std::string &path, std::function<void(size_t, size_t)> progressCallback) {
 	CURL *curl = curl_easy_init();
 	if (!curl) return false;
 
@@ -85,6 +93,11 @@ bool downloadFile(const std::string &url, const std::string &path) {
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // Disable SSL verification for simplicity on 3DS
 	curl_easy_setopt(curl, CURLOPT_USERAGENT, "TriCord-Updater/1.0");
+	if (progressCallback) {
+		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+		curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION, xferinfoCallback);
+		curl_easy_setopt(curl, CURLOPT_XFERINFODATA, &progressCallback);
+	}
 
 	CURLcode res = curl_easy_perform(curl);
 	

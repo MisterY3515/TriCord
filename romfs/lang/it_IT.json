@@ -201,5 +201,22 @@
     "voice.muted": "Silenziato",
     "voice.no_users": "Nessun utente nel canale",
     "voice.speaking": "Sta parlando",
-    "voice.unmuted": "Audio attivo"
+    "voice.unmuted": "Audio attivo",
+    "updater.title": "Aggiornamento Disponibile",
+    "updater.desc": "La versione {0} è disponibile! Vuoi aggiornare ora?",
+    "updater.downloading": "Scaricamento di {0} in corso...",
+    "updater.failed_fetch": "Impossibile recuperare gli aggiornamenti.",
+    "updater.failed_parse": "Impossibile analizzare gli aggiornamenti.",
+    "updater.no_releases": "Nessuna release adatta trovata.",
+    "updater.no_asset": "Release trovata, ma nessun asset corrispondente.",
+    "updater.up_to_date": "TriCord è aggiornato.",
+    "updater.complete_3dsx": "Aggiornamento completato! Riavvia l'Homebrew Launcher.",
+    "updater.failed_download": "Scaricamento aggiornamento fallito.",
+    "updater.installing_cia": "Installazione CIA in corso...",
+    "updater.complete_cia": "Installazione completata! Riavvia l'app.",
+    "updater.failed_cia": "Installazione CIA fallita.",
+    "updater.check": "Ricerca aggiornamenti...",
+    "updater.available": "Aggiornamento {0} disponibile! Controlla le Impostazioni.",
+    "updater.progress": "Scaricato: {0} / {1}",
+    "updater.error_network": "Nessuna Connessione di Rete"
 }

@@ -160,6 +160,7 @@ class ScreenManager {
 	void renderVoiceOverlay();
 	void drawHamburgerButton();
 	void drawToast();
+	void renderConnectionIndicator();
 
 	std::string toastMessage;
 	int toastTimer = 0;
