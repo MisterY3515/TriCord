@@ -229,24 +229,17 @@ void Updater::checkForUpdates(bool background) {
 		}
 
 		if (!downloadUrl.empty()) {
-			if (background) {
-				// Show a prompt to download
-				std::string title = i18n.get("updater.title");
-				std::string desc = Core::I18n::format(i18n.get("updater.desc"), remoteTag);
-				
-				UI::ScreenManager::getInstance().showModal(title, desc, 
-					{i18n.get("common.cancel"), i18n.get("common.ok")},
-					[downloadUrl, targetAssetName](int buttonIndex) {
-						if (buttonIndex == 1) { // OK
-							// Instead of directly performUpdate, we should probably show a dedicated UpdateScreen
-							// but for now, we'll start it directly here.
-							Updater::getInstance().performUpdate(downloadUrl, targetAssetName);
-						}
-					});
-			} else {
-				// We found an update! Let's download it directly
-				Updater::getInstance().performUpdate(downloadUrl, targetAssetName);
-			}
+			// Show a prompt to download
+			std::string title = i18n.get("updater.title");
+			std::string desc = Core::I18n::format(i18n.get("updater.desc"), remoteTag);
+			
+			UI::ScreenManager::getInstance().showModal(title, desc, 
+				{i18n.get("common.cancel"), i18n.get("common.ok")},
+				[downloadUrl, targetAssetName](int buttonIndex) {
+					if (buttonIndex == 1) { // OK
+						Updater::getInstance().performUpdate(downloadUrl, targetAssetName);
+					}
+				});
 		} else {
 			if (!background) UI::ScreenManager::getInstance().showToast(i18n.get("updater.no_asset"));
 		}

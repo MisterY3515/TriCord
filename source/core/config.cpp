@@ -23,7 +23,7 @@
 Config::Config()
     : currentAccountIndex(-1), timezoneOffset(0), language("en_US"), themeType(0), typingIndicatorEnabled(true),
       fileLoggingEnabled(false), disclaimerAccepted(false), sslVerificationDisabled(false), showAvatars(true),
-      showServerIcons(true), voiceChatsEnabled(true), daveEnabled(false), receivePreReleases(false), customThemeEnabled(false), selectedThemeName("") {
+      showServerIcons(true), voiceChatsEnabled(false), daveEnabled(true), receivePreReleases(false), customThemeEnabled(false), selectedThemeName("") {
 	customTheme = getDarkPreset();
 	customTheme.name = "Custom Theme";
 }

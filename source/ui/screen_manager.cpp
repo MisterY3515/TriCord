@@ -424,8 +424,8 @@ void ScreenManager::renderConnectionIndicator() {
 	                     state == Discord::ConnectionState::RECONNECTING);
 	bool isError = (state == Discord::ConnectionState::DISCONNECTED_ERROR);
 	
-	// Draw WiFi bars (liniette) on top-left of bottom screen (next to hamburger)
-	float startX = 40.0f;
+	// Draw connection bars on top-right of bottom screen
+	float startX = 297.0f;
 	float startY = 20.0f;
 	float barWidth = 3.0f;
 	float spacing = 2.0f;

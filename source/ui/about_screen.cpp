@@ -131,7 +131,7 @@ void AboutScreen::renderBottom(C3D_RenderTarget *target) {
 	};
 
 	drawSectionTitle("Revanced Credits", true);
-	drawEntry("MisterY3515", "Revanced Version Developer");
+	drawEntry("MisterY3515 (Andrea Alia)", "Revanced Version Developer");
 
 	drawSectionTitle("Original Project Credits", true);
 	drawEntry("2b-zipper", "Original Lead Developer");
