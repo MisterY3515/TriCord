@@ -372,15 +372,15 @@ void MessageScreen::update() {
 			}
 		} else if (touch.px >= fileBtnX && touch.px <= fileBtnX + btnW && touch.py >= btnY && touch.py <= btnY + btnH) {
 			if (!isMenuOpen && !isLoading) {
-				ScreenManager::getInstance().pushScreen(new FileBrowserScreen(channelId));
+				ScreenManager::getInstance().pushCustomScreen(std::make_unique<FileBrowserScreen>(channelId));
 			}
 		} else if (touch.px >= audioBtnX && touch.px <= audioBtnX + btnW && touch.py >= btnY && touch.py <= btnY + btnH) {
 			if (!isMenuOpen && !isLoading) {
-				ScreenManager::getInstance().pushScreen(new AudioRecordScreen(channelId));
+				ScreenManager::getInstance().pushCustomScreen(std::make_unique<AudioRecordScreen>(channelId));
 			}
 		} else if (touch.px >= camBtnX && touch.px <= camBtnX + btnW && touch.py >= btnY && touch.py <= btnY + btnH) {
 			if (!isMenuOpen && !isLoading) {
-				ScreenManager::getInstance().pushScreen(new CameraScreen(channelId));
+				ScreenManager::getInstance().pushCustomScreen(std::make_unique<CameraScreen>(channelId));
 			}
 		}
 	}

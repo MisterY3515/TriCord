@@ -1,9 +1,10 @@
 #include "ui/camera_screen.h"
 #include "ui/screen_manager.h"
 #include "discord/discord_client.h"
-#include "utils/logger.h"
+#include "log.h"
 #include <cstring>
 #include <cstdio>
+#include <sys/stat.h>
 
 namespace UI {
 
@@ -95,7 +96,7 @@ bool CameraScreen::captureFrame() {
 
 	Handle camReceiveEvent = 0;
 	Result res = CAMU_SetReceiving(&camReceiveEvent, camBuffer, PORT_CAM1,
-	                                camBufferSize, (s16)CAM_WIDTH * CAM_HEIGHT * sizeof(u16));
+	                                camBufferSize, (s16)(camBufferSize & 0xFFFF));
 	if (R_FAILED(res)) {
 		Logger::log("[Camera] SetReceiving failed: 0x%08lX", res);
 		return false;

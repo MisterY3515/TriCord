@@ -2,7 +2,7 @@
 #include "ui/screen_manager.h"
 #include "core/i18n.h"
 #include "discord/discord_client.h"
-#include "utils/logger.h"
+#include "log.h"
 #include <3ds.h>
 #include <dirent.h>
 #include <algorithm>

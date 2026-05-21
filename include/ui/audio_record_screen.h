@@ -1,6 +1,6 @@
 #pragma once
 
-#include "ui/screen.h"
+#include "ui/screen_manager.h"
 #include <3ds.h>
 #include <string>
 #include <vector>

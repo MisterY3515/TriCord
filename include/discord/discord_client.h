@@ -137,6 +137,9 @@ class DiscordClient {
 	void exchangeTicketForToken(const std::string &ticket, TokenCallback cb);
 	void fetchMember(const std::string &guildId, const std::string &userId, MemberCallback cb);
 
+	void uploadFile(const std::string &channelId, const std::string &filePath, const std::string &content,
+	                SendMessageCallback cb = nullptr);
+
 	void triggerTypingIndicator(const std::string &channelId);
 	std::vector<TypingUser> getTypingUsers(const std::string &channelId);
 
@@ -219,9 +222,6 @@ class DiscordClient {
 
 	void postMessage(const std::string &channelId, const std::string &content, const std::string &nonce,
 	                 const std::string &replyId, SendMessageCallback cb);
-
-	void uploadFile(const std::string &channelId, const std::string &filePath, const std::string &content,
-	                SendMessageCallback cb = nullptr);
 
 	void setState(ConnectionState newState, const std::string &message = "");
 	void setStatus(const std::string &message);

@@ -1,7 +1,7 @@
 #include "ui/audio_record_screen.h"
 #include "ui/screen_manager.h"
 #include "discord/discord_client.h"
-#include "utils/logger.h"
+#include "log.h"
 #include <cstring>
 #include <cstdio>
 #include <sys/stat.h>
@@ -24,16 +24,17 @@ void AudioRecordScreen::onEnter() {
 }
 
 bool AudioRecordScreen::initMic() {
-	Result res = micInit(nullptr, BUFFER_SIZE);
-	if (R_FAILED(res)) {
-		Logger::log("[Audio] micInit failed: 0x%08lX", res);
-		return false;
-	}
-
 	micBuffer = (u8 *)linearAlloc(BUFFER_SIZE);
 	if (!micBuffer) {
 		Logger::log("[Audio] Failed to allocate mic buffer");
-		micExit();
+		return false;
+	}
+
+	Result res = micInit(micBuffer, BUFFER_SIZE);
+	if (R_FAILED(res)) {
+		Logger::log("[Audio] micInit failed: 0x%08lX", res);
+		linearFree(micBuffer);
+		micBuffer = nullptr;
 		return false;
 	}
 
@@ -85,19 +86,15 @@ void AudioRecordScreen::stopRecording() {
 	MICU_StopSampling();
 	isRecording = false;
 
-	recordedBytes = MICU_GetLastSampleOffset();
+	recordedBytes = micGetLastSampleOffset();
 	Logger::log("[Audio] Recording stopped, %u bytes captured", recordedBytes);
 }
 
 bool AudioRecordScreen::saveWav(const std::string &path) {
 	if (recordedBytes == 0) return false;
 
-	// Get the actual recorded data from the shared memory buffer
-	u32 dataSize = recordedBytes;
-	u8 *sharedBuf = micGetLastSampleOffset() ? micBuffer : nullptr;
-
 	// Copy from mic shared buffer
-	u32 actualBytes = MICU_GetLastSampleOffset();
+	u32 actualBytes = micGetLastSampleOffset();
 	if (actualBytes == 0) return false;
 
 	FILE *f = fopen(path.c_str(), "wb");
@@ -132,9 +129,8 @@ bool AudioRecordScreen::saveWav(const std::string &path) {
 	fwrite(&actualBytes, 4, 1, f);
 
 	// Write PCM data from the mic shared memory
-	u8 *micData = (u8 *)micGetSampleDataPtr();
-	if (micData) {
-		fwrite(micData, 1, actualBytes, f);
+	if (micBuffer) {
+		fwrite(micBuffer, 1, actualBytes, f);
 	}
 
 	fclose(f);
@@ -254,7 +250,7 @@ void AudioRecordScreen::renderBottom(C3D_RenderTarget *target) {
 		                 "Press A to start recording", 320.0f);
 
 		char maxStr[32];
-		snprintf(maxStr, sizeof(maxStr), "Max duration: %us", MAX_RECORD_SECONDS);
+		snprintf(maxStr, sizeof(maxStr), "Max duration: %us", (unsigned int)MAX_RECORD_SECONDS);
 		drawCenteredText(145.0f, 0.5f, 0.4f, 0.4f, ScreenManager::colorTextMuted(),
 		                 maxStr, 320.0f);
 	}

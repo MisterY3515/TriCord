@@ -2112,7 +2112,7 @@ void DiscordClient::uploadFile(const std::string &channelId, const std::string &
 	    },
 	    {{"Authorization", token},
 	     {"Content-Type", "multipart/form-data; boundary=" + boundary},
-	     {"X-Super-Properties", Network::SuperProperties::getEncoded()}});
+	     {"X-Context-Properties", "eyJsb2NhdGlvbiI6ImNoYXRfaW5wdXQifQ=="}});
 }
 
 void DiscordClient::sendMessageAsync(const std::string &channelId, const std::string &content, SuccessCallback cb) {
