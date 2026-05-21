@@ -83,13 +83,17 @@ int main(int argc, char **argv) {
 	Logger::setCrashContext("shutdown: begin");
 	Logger::log("TriCord - Shutting down...");
 	
-	// Shutdown singletons explicitly before services exit
+	// 1. Shutdown background threads and network services first
+	Discord::DiscordClient::getInstance().shutdown();
 	Discord::VoiceClient::getInstance().shutdown();
+	Network::NetworkManager::getInstance().shutdown();
+	
+	// 2. Shutdown UI (now safe from background callbacks)
 	UI::ScreenManager::getInstance().shutdown();
 	UI::ImageManager::getInstance().shutdown();
-	Discord::DiscordClient::getInstance().shutdown();
+	
+	// 3. Shutdown hardware managers
 	Audio::AudioManager::getInstance().shutdown();
-	Network::NetworkManager::getInstance().shutdown();
 
 	psExit();
 	romfsExit();

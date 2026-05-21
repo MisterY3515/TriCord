@@ -1070,6 +1070,10 @@ void DiscordClient::handleVoiceStateUpdate(const rapidjson::Value &d) {
 					state.self_video = Utils::Json::getBool(d, "self_video");
 					guild.voiceStates.push_back(state);
 					notifySessionId = guild.voiceStates.back().session_id;
+
+					if (isCurrentUser) {
+						VoiceClient::getInstance().syncMuteState(state.self_mute, state.self_deaf);
+					}
 				}
 
 				Logger::log("[Voice] User %s %s voice channel %s in guild %s", userId.c_str(),

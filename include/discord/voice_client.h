@@ -37,6 +37,7 @@ class VoiceClient {
 	// Audio control
 	void setMuted(bool mute);
 	void setDeafened(bool deaf);
+	void syncMuteState(bool mute, bool deaf);
 	bool isMuted() const;
 	bool isDeafened() const;
 

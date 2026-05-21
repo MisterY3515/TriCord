@@ -120,12 +120,14 @@ void VoiceClient::threadMain(void *arg) {
 		}
 		
 		client->update();
-		svcSleepThread(500000); // 0.5ms sleep to prevent CPU hogging
+		svcSleepThread(5000000); // 5ms sleep to allow UI thread to process gateway events
 	}
 }
 
 bool VoiceClient::initializeCodecsLocked() {
 	if (decoder && encoder) {
+		opus_encoder_ctl(encoder, OPUS_RESET_STATE);
+		opus_decoder_ctl(decoder, OPUS_RESET_STATE);
 		return true;
 	}
 
@@ -388,15 +390,9 @@ void VoiceClient::handleVoiceWsBinaryMessage(std::vector<uint8_t> &msg) {
 		return;
 	}
 
-	Logger::log("[Voice] Received binary Voice WebSocket payload (%u bytes)", (unsigned)msg.size());
-	if (!Config::getInstance().isDaveEnabled()) {
-		Logger::log("[Voice] Voice binary payload requires DAVE/MLS/E2EE support, but DAVE is disabled");
-		requestLeaveLocked(true, "voice binary payload received while DAVE is disabled");
-		return;
-	}
-
-	Logger::log("[Voice] DAVE/MLS/E2EE binary payload received, but MLS/libdave processing is not implemented yet");
-	requestLeaveLocked(true, "voice DAVE payload not implemented");
+	Logger::log("[Voice] Received binary Voice WebSocket payload (%u bytes). Ignoring as DAVE/MLS is not fully supported.", (unsigned)msg.size());
+	// We ignore binary payloads completely instead of leaving the channel.
+	// Discord sends these for DAVE/E2EE negotiation, which is not strictly required for standard UDP audio.
 }
 
 void VoiceClient::handleVoiceWsMessage(std::string &msg) {
@@ -1035,6 +1031,15 @@ void VoiceClient::setDeafened(bool deaf) {
 	if (!channelId.empty()) {
 		DiscordClient::getInstance().sendVoiceStateUpdate(guildId, channelId, muted, deafened);
 	}
+}
+
+void VoiceClient::syncMuteState(bool mute, bool deaf) {
+	std::lock_guard<std::mutex> lock(voiceMutex);
+	if (muted != mute) {
+		muted = mute;
+		Audio::AudioManager::getInstance().playSystemSound(muted ? Audio::SystemSound::MUTE : Audio::SystemSound::UNMUTE);
+	}
+	deafened = deaf;
 }
 
 bool VoiceClient::isMuted() const { return muted; }
