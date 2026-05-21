@@ -209,7 +209,11 @@ void Updater::checkForUpdates(bool background) {
 	std::string remoteTag = (*latestRelease)["tag_name"].GetString();
 #define STRINGIFY(x) #x
 #define TOSTRING(x) STRINGIFY(x)
+#ifdef APP_VERSION_PRERELEASE
+	std::string currentTag = TOSTRING(APP_VERSION_MAJOR) "." TOSTRING(APP_VERSION_MINOR) "." TOSTRING(APP_VERSION_MICRO) TOSTRING(APP_VERSION_PRERELEASE);
+#else
 	std::string currentTag = TOSTRING(APP_VERSION_MAJOR) "." TOSTRING(APP_VERSION_MINOR) "." TOSTRING(APP_VERSION_MICRO);
+#endif
 
 	if (isNewerVersion(currentTag, remoteTag)) {
 		// Find correct asset
