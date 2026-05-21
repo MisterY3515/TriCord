@@ -348,7 +348,7 @@ void MessageScreen::update() {
 		float btnW = 30.0f;
 		float btnH = 30.0f;
 		float btnX = 320.0f - btnW - 10.0f;
-		float btnY = 240.0f - btnH - 10.0f;
+		float btnY = 240.0f - btnH - 25.0f;
 
 		const float SCREEN_HEIGHT = 240.0f;
 		float maxScroll = std::max(0.0f, totalContentHeight - SCREEN_HEIGHT);
@@ -2381,7 +2381,7 @@ void MessageScreen::renderBottomButtons() {
 	float btnW = 30.0f;
 	float btnH = 30.0f;
 	float btnX = 320.0f - btnW - 10.0f;
-	float btnY = 240.0f - btnH - 10.0f;
+	float btnY = 240.0f - btnH - 25.0f;
 
 	const float SCREEN_HEIGHT = 240.0f;
 	float maxScroll = std::max(0.0f, totalContentHeight - SCREEN_HEIGHT);
@@ -2407,15 +2407,15 @@ void MessageScreen::renderBottomButtons() {
 
 	// File Upload Button
 	drawRoundedRect(fileBtnX, btnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
-	drawCenteredRichText(btnY + 5.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE074", fileBtnX + (btnW / 2.0f));
+	drawCenteredRichText(btnY + 8.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE074", fileBtnX + (btnW / 2.0f));
 
 	// Audio Record Button
 	drawRoundedRect(audioBtnX, btnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
-	drawCenteredRichText(btnY + 5.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE034", audioBtnX + (btnW / 2.0f));
+	drawCenteredRichText(btnY + 8.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE034", audioBtnX + (btnW / 2.0f));
 
 	// Camera Button
 	drawRoundedRect(camBtnX, btnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
-	drawCenteredRichText(btnY + 5.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE070", camBtnX + (btnW / 2.0f));
+	drawCenteredRichText(btnY + 8.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE070", camBtnX + (btnW / 2.0f));
 }
 
 std::unordered_set<std::string> MessageScreen::getVisibleTwemojis() {

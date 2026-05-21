@@ -18,8 +18,6 @@ class AudioRecordScreen : public Screen {
 	void renderBottom(C3D_RenderTarget *target) override;
 
   private:
-	bool initMic();
-	void deinitMic();
 	void startRecording();
 	void stopRecording();
 	bool saveWav(const std::string &path);
@@ -27,16 +25,13 @@ class AudioRecordScreen : public Screen {
 
 	std::string channelId;
 
-	bool micInitialized;
 	bool isRecording;
 	bool isUploading;
 
-	static constexpr u32 SAMPLE_RATE = 16000;
+	static constexpr u32 SAMPLE_RATE = 32730;
 	static constexpr u32 MAX_RECORD_SECONDS = 60;
-	static constexpr u32 BUFFER_SIZE = SAMPLE_RATE * MAX_RECORD_SECONDS * 2; // 16-bit PCM
 
-	u8 *micBuffer;
-	u32 recordedBytes;
+	std::vector<int16_t> recordedAudio;
 	u64 recordStartTime;
 };
 

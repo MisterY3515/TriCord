@@ -78,7 +78,7 @@ void CameraScreen::update() {
 		
 		u16* buffer = Hardware::Camera::getInstance().getInternalBuffer();
 		if (Hardware::Camera::getInstance().isReady() && buffer) {
-			if (Hardware::ImageExport::saveBMP(tmpPath.c_str(), buffer, 320, 240)) {
+			if (Hardware::ImageExport::saveBMP(tmpPath.c_str(), buffer, 320, 240, 512)) {
 				deinitCamera();
 				uploadPhoto(tmpPath);
 			} else {

@@ -6,71 +6,34 @@
 #include <cstdio>
 #include <sys/stat.h>
 
+#include "3dsware/mic.h"
+
 namespace UI {
 
 AudioRecordScreen::AudioRecordScreen(const std::string &channelId)
-    : channelId(channelId), micInitialized(false), isRecording(false),
-      isUploading(false), micBuffer(nullptr), recordedBytes(0), recordStartTime(0) {}
+    : channelId(channelId), isRecording(false),
+      isUploading(false), recordStartTime(0) {}
 
 AudioRecordScreen::~AudioRecordScreen() {
-	deinitMic();
+	if (isRecording) stopRecording();
 }
 
 void AudioRecordScreen::onEnter() {
-	if (!initMic()) {
-		ScreenManager::getInstance().showToast("Microphone init failed");
+	// Hardware::Mic is already initialized by AudioManager
+	if (!Hardware::Mic::getInstance().isReady()) {
+		ScreenManager::getInstance().showToast("Microphone not ready");
 		ScreenManager::getInstance().returnToPreviousScreen();
 	}
 }
 
-bool AudioRecordScreen::initMic() {
-	micBuffer = (u8 *)linearAlloc(BUFFER_SIZE);
-	if (!micBuffer) {
-		Logger::log("[Audio] Failed to allocate mic buffer");
-		return false;
-	}
-
-	Result res = micInit(micBuffer, BUFFER_SIZE);
-	if (R_FAILED(res)) {
-		Logger::log("[Audio] micInit failed: 0x%08lX", res);
-		linearFree(micBuffer);
-		micBuffer = nullptr;
-		return false;
-	}
-
-	micInitialized = true;
-	Logger::log("[Audio] Microphone initialized (16kHz 16-bit PCM, max %us)", MAX_RECORD_SECONDS);
-	return true;
-}
-
-void AudioRecordScreen::deinitMic() {
-	if (isRecording) {
-		MICU_StopSampling();
-		isRecording = false;
-	}
-	if (micInitialized) {
-		micExit();
-		micInitialized = false;
-	}
-	if (micBuffer) {
-		linearFree(micBuffer);
-		micBuffer = nullptr;
-	}
-}
-
 void AudioRecordScreen::startRecording() {
-	if (!micInitialized || isRecording) return;
+	if (isRecording) return;
 
-	recordedBytes = 0;
-	memset(micBuffer, 0, BUFFER_SIZE);
+	recordedAudio.clear();
+	recordedAudio.reserve(SAMPLE_RATE * MAX_RECORD_SECONDS);
 
-	Result res = MICU_SetAllowShellClosed(false);
-	if (R_FAILED(res)) Logger::log("[Audio] SetAllowShellClosed warning: 0x%08lX", res);
-
-	res = MICU_StartSampling(MICU_ENCODING_PCM16_SIGNED, MICU_SAMPLE_RATE_16360,
-	                          0, BUFFER_SIZE, false);
-	if (R_FAILED(res)) {
-		Logger::log("[Audio] StartSampling failed: 0x%08lX", res);
+	if (!Hardware::Mic::getInstance().startStreaming()) {
+		Logger::log("[Audio] StartSampling failed");
 		ScreenManager::getInstance().showToast("Failed to start recording");
 		return;
 	}
@@ -83,20 +46,16 @@ void AudioRecordScreen::startRecording() {
 void AudioRecordScreen::stopRecording() {
 	if (!isRecording) return;
 
-	MICU_StopSampling();
+	Hardware::Mic::getInstance().stopStreaming();
 	isRecording = false;
 
-	recordedBytes = micGetLastSampleOffset();
-	Logger::log("[Audio] Recording stopped, %u bytes captured", recordedBytes);
+	Logger::log("[Audio] Recording stopped, %zu samples captured", recordedAudio.size());
 }
 
 bool AudioRecordScreen::saveWav(const std::string &path) {
-	if (recordedBytes == 0) return false;
+	if (recordedAudio.empty()) return false;
 
-	// Copy from mic shared buffer
-	u32 actualBytes = micGetLastSampleOffset();
-	if (actualBytes == 0) return false;
-
+	u32 actualBytes = recordedAudio.size() * 2;
 	FILE *f = fopen(path.c_str(), "wb");
 	if (!f) return false;
 
@@ -128,10 +87,8 @@ bool AudioRecordScreen::saveWav(const std::string &path) {
 	fwrite("data", 1, 4, f);
 	fwrite(&actualBytes, 4, 1, f);
 
-	// Write PCM data from the mic shared memory
-	if (micBuffer) {
-		fwrite(micBuffer, 1, actualBytes, f);
-	}
+	// Write PCM data
+	fwrite(recordedAudio.data(), 1, actualBytes, f);
 
 	fclose(f);
 	Logger::log("[Audio] Saved WAV to %s (%u bytes)", path.c_str(), actualBytes);
@@ -164,7 +121,6 @@ void AudioRecordScreen::update() {
 		if (isRecording) {
 			stopRecording();
 		}
-		deinitMic();
 		ScreenManager::getInstance().returnToPreviousScreen();
 		return;
 	}
@@ -180,7 +136,6 @@ void AudioRecordScreen::update() {
 			mkdir("sdmc:/3ds/TriCord", 0777);
 
 			if (saveWav(tmpPath)) {
-				deinitMic();
 				uploadAudio(tmpPath);
 			} else {
 				ScreenManager::getInstance().showToast("Failed to save audio");
@@ -190,6 +145,12 @@ void AudioRecordScreen::update() {
 
 	// Auto-stop at max duration
 	if (isRecording) {
+		int16_t buf[2048];
+		size_t samplesRead = Hardware::Mic::getInstance().readSamples(buf, 2048);
+		if (samplesRead > 0) {
+			recordedAudio.insert(recordedAudio.end(), buf, buf + samplesRead);
+		}
+
 		u64 elapsed = osGetTime() - recordStartTime;
 		if (elapsed >= MAX_RECORD_SECONDS * 1000) {
 			stopRecording();

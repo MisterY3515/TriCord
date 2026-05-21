@@ -31,9 +31,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	TriCord
 BUILD		:=	build
-SOURCES		:=	source source/core source/network source/audio source/discord source/ui source/ui/forum source/utils library/qrcodegen ../3DSware/source
+SOURCES		:=	source source/core source/network source/audio source/discord source/ui source/ui/forum source/utils library/qrcodegen 3DSware/source
 DATA		:=	data
-INCLUDES	:=	include include/core include/ui library library/stb_image library/qrcodegen ../3DSware/include
+INCLUDES	:=	include include/core include/ui library library/stb_image library/qrcodegen 3DSware/include
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 ROMFS		:=	romfs
