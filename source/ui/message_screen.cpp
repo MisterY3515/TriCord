@@ -348,39 +348,42 @@ void MessageScreen::update() {
 		float btnW = 30.0f;
 		float btnH = 30.0f;
 		float btnX = 320.0f - btnW - 10.0f;
-		float btnY = 240.0f - btnH - 25.0f;
-
+		
 		const float SCREEN_HEIGHT = 240.0f;
 		float maxScroll = std::max(0.0f, totalContentHeight - SCREEN_HEIGHT);
 		bool isScrollBtnVisible = (targetScrollY < maxScroll - 10.0f);
 
-		if (isScrollBtnVisible && touch.px >= btnX && touch.px <= btnX + btnW && touch.py >= btnY &&
-		    touch.py <= btnY + btnH) {
+		if (isScrollBtnVisible && touch.px >= btnX && touch.px <= btnX + btnW && touch.py >= 240.0f - btnH - 10.0f &&
+		    touch.py <= 240.0f - 10.0f) {
 			if (!isMenuOpen && !isLoading) {
 				scrollToBottom();
 			}
 		}
 
-		float reactBtnX = isScrollBtnVisible ? (btnX - btnW - 8.0f) : btnX;
-		float fileBtnX = reactBtnX - btnW - 8.0f;
-		float audioBtnX = fileBtnX - btnW - 8.0f;
-		float camBtnX = audioBtnX - btnW - 8.0f;
+		float startX = btnX;
+		if (isScrollBtnVisible) {
+			startX -= (btnW + 8.0f);
+		}
+		float col1X = startX;
+		float col0X = startX - btnW - 8.0f;
+		float row1Y = 240.0f - btnH - 10.0f;
+		float row0Y = row1Y - btnH - 8.0f;
 
-		if (touch.px >= reactBtnX && touch.px <= reactBtnX + btnW && touch.py >= btnY && touch.py <= btnY + btnH) {
+		if (touch.px >= col1X && touch.px <= col1X + btnW && touch.py >= row1Y && touch.py <= row1Y + btnH) {
 			if (!isMenuOpen && !isLoading) {
-				bottomMode = BottomScreenMode::EMOJI_PICKER;
+				bottomMode = BottomScreenMode::EMOJI_PICKER; // React
 			}
-		} else if (touch.px >= fileBtnX && touch.px <= fileBtnX + btnW && touch.py >= btnY && touch.py <= btnY + btnH) {
+		} else if (touch.px >= col0X && touch.px <= col0X + btnW && touch.py >= row1Y && touch.py <= row1Y + btnH) {
 			if (!isMenuOpen && !isLoading) {
-				ScreenManager::getInstance().pushCustomScreen(std::make_unique<FileBrowserScreen>(channelId));
+				ScreenManager::getInstance().pushCustomScreen(std::make_unique<FileBrowserScreen>(channelId)); // File
 			}
-		} else if (touch.px >= audioBtnX && touch.px <= audioBtnX + btnW && touch.py >= btnY && touch.py <= btnY + btnH) {
+		} else if (touch.px >= col1X && touch.px <= col1X + btnW && touch.py >= row0Y && touch.py <= row0Y + btnH) {
 			if (!isMenuOpen && !isLoading) {
-				ScreenManager::getInstance().pushCustomScreen(std::make_unique<AudioRecordScreen>(channelId));
+				ScreenManager::getInstance().pushCustomScreen(std::make_unique<AudioRecordScreen>(channelId)); // Audio
 			}
-		} else if (touch.px >= camBtnX && touch.px <= camBtnX + btnW && touch.py >= btnY && touch.py <= btnY + btnH) {
+		} else if (touch.px >= col0X && touch.px <= col0X + btnW && touch.py >= row0Y && touch.py <= row0Y + btnH) {
 			if (!isMenuOpen && !isLoading) {
-				ScreenManager::getInstance().pushCustomScreen(std::make_unique<CameraScreen>(channelId));
+				ScreenManager::getInstance().pushCustomScreen(std::make_unique<CameraScreen>(channelId)); // Camera
 			}
 		}
 	}
@@ -2381,19 +2384,27 @@ void MessageScreen::renderBottomButtons() {
 	float btnW = 30.0f;
 	float btnH = 30.0f;
 	float btnX = 320.0f - btnW - 10.0f;
-	float btnY = 240.0f - btnH - 25.0f;
 
 	const float SCREEN_HEIGHT = 240.0f;
 	float maxScroll = std::max(0.0f, totalContentHeight - SCREEN_HEIGHT);
 	bool isScrollBtnVisible = (targetScrollY < maxScroll - 10.0f);
 
-	float reactBtnX = isScrollBtnVisible ? (btnX - btnW - 8.0f) : btnX;
-	float fileBtnX = reactBtnX - btnW - 8.0f;
-	float audioBtnX = fileBtnX - btnW - 8.0f;
-	float camBtnX = audioBtnX - btnW - 8.0f;
+	float startX = btnX;
+	if (isScrollBtnVisible) {
+		startX -= (btnW + 8.0f);
+	}
+	float col1X = startX;
+	float col0X = startX - btnW - 8.0f;
+	float row1Y = 240.0f - btnH - 10.0f;
+	float row0Y = row1Y - btnH - 8.0f;
+
+	float reactBtnX = col1X, reactBtnY = row1Y;
+	float fileBtnX = col0X, fileBtnY = row1Y;
+	float audioBtnX = col1X, audioBtnY = row0Y;
+	float camBtnX = col0X, camBtnY = row0Y;
 
 	// Emoji/Reaction Button
-	drawRoundedRect(reactBtnX, btnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
+	drawRoundedRect(reactBtnX, reactBtnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
 	C3D_Tex *texReact = UI::ImageManager::getInstance().getLocalImage("romfs:/discord-icons/reaction.png");
 	if (texReact) {
 		float iconSize = 20.0f;
@@ -2401,21 +2412,21 @@ void MessageScreen::renderBottomButtons() {
 		C2D_Image img = {texReact, &subtex};
 		C2D_ImageTint tint;
 		C2D_PlainImageTint(&tint, ScreenManager::colorText(), 1.0f);
-		C2D_DrawImageAt(img, reactBtnX + (btnW - iconSize) / 2.0f, btnY + (btnH - iconSize) / 2.0f, 0.55f, &tint,
+		C2D_DrawImageAt(img, reactBtnX + (btnW - iconSize) / 2.0f, reactBtnY + (btnH - iconSize) / 2.0f, 0.55f, &tint,
 		                iconSize / texReact->width, iconSize / texReact->height);
 	}
 
 	// File Upload Button
-	drawRoundedRect(fileBtnX, btnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
-	drawCenteredRichText(btnY + 8.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE074", fileBtnX + (btnW / 2.0f));
+	drawRoundedRect(fileBtnX, fileBtnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
+	drawCenteredRichText(fileBtnY + 5.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE074", fileBtnX + (btnW / 2.0f));
 
 	// Audio Record Button
-	drawRoundedRect(audioBtnX, btnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
-	drawCenteredRichText(btnY + 8.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE034", audioBtnX + (btnW / 2.0f));
+	drawRoundedRect(audioBtnX, audioBtnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
+	drawCenteredRichText(audioBtnY + 5.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE034", audioBtnX + (btnW / 2.0f));
 
 	// Camera Button
-	drawRoundedRect(camBtnX, btnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
-	drawCenteredRichText(btnY + 8.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE070", camBtnX + (btnW / 2.0f));
+	drawRoundedRect(camBtnX, camBtnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
+	drawCenteredRichText(camBtnY + 5.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE070", camBtnX + (btnW / 2.0f));
 }
 
 std::unordered_set<std::string> MessageScreen::getVisibleTwemojis() {
