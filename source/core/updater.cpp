@@ -207,8 +207,9 @@ void Updater::checkForUpdates(bool background) {
 	}
 
 	std::string remoteTag = (*latestRelease)["tag_name"].GetString();
-	// Compare with current version - Assuming 0.0.8 based on AppInfo
-	std::string currentTag = "0.0.8";
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+	std::string currentTag = TOSTRING(APP_VERSION_MAJOR) "." TOSTRING(APP_VERSION_MINOR) "." TOSTRING(APP_VERSION_MICRO);
 
 	if (isNewerVersion(currentTag, remoteTag)) {
 		// Find correct asset

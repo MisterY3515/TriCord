@@ -2,9 +2,9 @@ name: Build
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, dev ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, dev ]
   workflow_dispatch:
 
 jobs:
@@ -17,6 +17,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+
+      - name: Install Dependencies
+        run: dkp-pacman -Syu --noconfirm 3ds-dev 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-libopus 3ds-rapidjson 3ds-makerom
 
       - name: Build libsodium
         run: |

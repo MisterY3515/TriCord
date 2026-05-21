@@ -69,6 +69,7 @@ Never share your Discord token or the local account storage files.
 ## Voice Chat
 
 Voice chat is present but still under active stabilization.
+**NOTE: The voice chat feature is currently in testing and is non-functional in this release.**
 
 - Join is available from voice channels
 - Runtime logging around the voice path is more detailed than the rest of the app
