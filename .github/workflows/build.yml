@@ -19,7 +19,7 @@ jobs:
 
 
       - name: Install Dependencies
-        run: dkp-pacman -Syu --noconfirm 3ds-dev 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-libopus 3ds-rapidjson 3ds-makerom
+        run: dkp-pacman -Syu --noconfirm 3ds-dev 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-libopus
 
       - name: Build libsodium
         run: |
@@ -27,7 +27,7 @@ jobs:
 
       - name: Build TriCord
         run: |
-          make cia
+          make
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -35,4 +35,3 @@ jobs:
           name: TriCord-build
           path: |
             TriCord.3dsx
-            TriCord.cia
