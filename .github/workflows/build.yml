@@ -28,6 +28,7 @@ jobs:
           dkp-pacman -S --noconfirm bannertool makerom || true
 
       - name: Build libsodium
+        run: |
           bash tools/setup_libsodium.sh
 
       - name: Build TriCord
