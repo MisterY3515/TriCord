@@ -21,7 +21,11 @@ jobs:
 
 
       - name: Install Dependencies
-        run: dkp-pacman -Syu --noconfirm 3ds-dev 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-libopus 3ds-bannertool 3ds-makerom bannertool makerom || true
+        run: |
+          dkp-pacman -Syu --noconfirm 3ds-dev 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-libopus
+          dkp-pacman -S --noconfirm 3dstools || true
+          dkp-pacman -S --noconfirm general-tools || true
+          dkp-pacman -S --noconfirm bannertool makerom || true
 
       - name: Build libsodium
           bash tools/setup_libsodium.sh
