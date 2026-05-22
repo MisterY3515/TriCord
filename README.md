@@ -9,6 +9,9 @@
 
 Discord client for Nintendo 3DS.
 
+<img width="225" height="226" alt="image" src="https://github.com/user-attachments/assets/63bb4497-376b-4713-a03d-dc4c4219e541" />
+Download QR for FBI.
+
 This repository is a maintained fork of TriCord (made by 2b-zipper) focused on trying to add some features like the VC (just for the love of the game, I'm not even sure that is possible)
 
 ## Disclaimer
