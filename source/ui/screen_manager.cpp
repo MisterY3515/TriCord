@@ -415,14 +415,8 @@ void ScreenManager::renderVoiceOverlay() {
 
 void ScreenManager::renderConnectionIndicator() {
 	auto state = Discord::DiscordClient::getInstance().getState();
-	
-	bool isConnected = (state == Discord::ConnectionState::READY);
-	bool isConnecting = (state == Discord::ConnectionState::CONNECTING || 
-	                     state == Discord::ConnectionState::CONNECTED_WS || 
-	                     state == Discord::ConnectionState::IDENTIFYING || 
-	                     state == Discord::ConnectionState::AUTHENTICATING ||
-	                     state == Discord::ConnectionState::RECONNECTING);
 	bool isError = (state == Discord::ConnectionState::DISCONNECTED_ERROR);
+	u8 wifiStrength = osGetWifiStrength(); // Returns 0 to 3
 	
 	// Draw connection bars on top-right of bottom screen
 	float startX = 297.0f;
@@ -431,8 +425,8 @@ void ScreenManager::renderConnectionIndicator() {
 	float spacing = 2.0f;
 	
 	u32 activeColor = C2D_Color32(0, 255, 0, 255);
-	if (isConnecting) activeColor = C2D_Color32(255, 200, 0, 255);
-	if (isError) activeColor = C2D_Color32(255, 0, 0, 255);
+	if (wifiStrength <= 1) activeColor = C2D_Color32(255, 200, 0, 255);
+	if (wifiStrength == 0) activeColor = C2D_Color32(255, 0, 0, 255);
 	
 	u32 inactiveColor = C2D_Color32(100, 100, 100, 255);
 	
@@ -441,10 +435,7 @@ void ScreenManager::renderConnectionIndicator() {
 		float bx = startX + (i * (barWidth + spacing));
 		float by = startY - barHeight;
 		
-		bool fill = false;
-		if (isConnected) fill = true;
-		else if (isConnecting && i < 2) fill = true; // Two bars for connecting
-		else if (!isError && i == 0) fill = true;    // One bar if just idle
+		bool fill = (i < wifiStrength);
 		
 		C2D_DrawRectSolid(bx, by, 0.9f, barWidth, barHeight, fill ? activeColor : inactiveColor);
 	}

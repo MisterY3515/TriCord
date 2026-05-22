@@ -2,7 +2,7 @@
 #include "ui/screen_manager.h"
 #include <string>
 #include <mutex>
-#include <thread>
+#include <3ds.h>
 
 namespace UI {
 
@@ -19,7 +19,7 @@ private:
 	std::string downloadUrl;
 	std::string assetName;
 	
-	std::thread updateThread;
+	Thread updateThread;
 	std::mutex progressMutex;
 	
 	size_t currentBytes;

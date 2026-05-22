@@ -19,5 +19,7 @@ C3D_Tex *loadTextureFromMemory(const unsigned char *data, size_t size, int &outW
 
 C3D_Tex *loadTextureFromMemory(const unsigned char *data, size_t size);
 
+bool saveJPG(const char *path, const u16 *rgb565, int width, int height);
+
 } // namespace Image
 } // namespace Utils

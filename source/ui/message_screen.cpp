@@ -7,6 +7,9 @@
 #include "ui/emoji_manager.h"
 #include "ui/image_manager.h"
 #include "ui/screen_manager.h"
+#include "ui/file_browser_screen.h"
+#include "ui/camera_screen.h"
+#include "ui/audio_record_screen.h"
 #include "utils/message_utils.h"
 #include "utils/utf8_utils.h"
 #include <3ds.h>
@@ -345,23 +348,42 @@ void MessageScreen::update() {
 		float btnW = 30.0f;
 		float btnH = 30.0f;
 		float btnX = 320.0f - btnW - 10.0f;
-		float btnY = 240.0f - btnH - 10.0f;
-
+		
 		const float SCREEN_HEIGHT = 240.0f;
 		float maxScroll = std::max(0.0f, totalContentHeight - SCREEN_HEIGHT);
 		bool isScrollBtnVisible = (targetScrollY < maxScroll - 10.0f);
 
-		if (isScrollBtnVisible && touch.px >= btnX && touch.px <= btnX + btnW && touch.py >= btnY &&
-		    touch.py <= btnY + btnH) {
+		if (isScrollBtnVisible && touch.px >= btnX && touch.px <= btnX + btnW && touch.py >= 240.0f - btnH - 10.0f &&
+		    touch.py <= 240.0f - 10.0f) {
 			if (!isMenuOpen && !isLoading) {
 				scrollToBottom();
 			}
 		}
 
-		float reactBtnX = isScrollBtnVisible ? (btnX - btnW - 8.0f) : btnX;
-		if (touch.px >= reactBtnX && touch.px <= reactBtnX + btnW && touch.py >= btnY && touch.py <= btnY + btnH) {
+		float startX = btnX;
+		if (isScrollBtnVisible) {
+			startX -= (btnW + 8.0f);
+		}
+		float col1X = startX;
+		float col0X = startX - btnW - 8.0f;
+		float row1Y = 240.0f - btnH - 10.0f;
+		float row0Y = row1Y - btnH - 8.0f;
+
+		if (touch.px >= col1X && touch.px <= col1X + btnW && touch.py >= row1Y && touch.py <= row1Y + btnH) {
 			if (!isMenuOpen && !isLoading) {
-				bottomMode = BottomScreenMode::EMOJI_PICKER;
+				bottomMode = BottomScreenMode::EMOJI_PICKER; // React
+			}
+		} else if (touch.px >= col0X && touch.px <= col0X + btnW && touch.py >= row1Y && touch.py <= row1Y + btnH) {
+			if (!isMenuOpen && !isLoading) {
+				ScreenManager::getInstance().pushCustomScreen(std::make_unique<FileBrowserScreen>(channelId)); // File
+			}
+		} else if (touch.px >= col1X && touch.px <= col1X + btnW && touch.py >= row0Y && touch.py <= row0Y + btnH) {
+			if (!isMenuOpen && !isLoading) {
+				ScreenManager::getInstance().pushCustomScreen(std::make_unique<AudioRecordScreen>(channelId)); // Audio
+			}
+		} else if (touch.px >= col0X && touch.px <= col0X + btnW && touch.py >= row0Y && touch.py <= row0Y + btnH) {
+			if (!isMenuOpen && !isLoading) {
+				ScreenManager::getInstance().pushCustomScreen(std::make_unique<CameraScreen>(channelId)); // Camera
 			}
 		}
 	}
@@ -1754,7 +1776,7 @@ void MessageScreen::renderBottom(C3D_RenderTarget *target) {
 		C2D_DrawRectSolid(centerX - 6, centerY + 5, 0.55f, 12, 1.5f, ScreenManager::colorText());
 	}
 
-	renderReactionIcon();
+	renderBottomButtons();
 }
 
 void MessageScreen::fetchOlderMessages() {
@@ -2354,7 +2376,7 @@ float MessageScreen::renderEmbed(const Discord::Embed &embed, float x, float y, 
 
 	return currentY - y;
 }
-void MessageScreen::renderReactionIcon() {
+void MessageScreen::renderBottomButtons() {
 	if (bottomMode == BottomScreenMode::EMOJI_PICKER) {
 		return;
 	}
@@ -2362,26 +2384,52 @@ void MessageScreen::renderReactionIcon() {
 	float btnW = 30.0f;
 	float btnH = 30.0f;
 	float btnX = 320.0f - btnW - 10.0f;
-	float btnY = 240.0f - btnH - 10.0f;
 
 	const float SCREEN_HEIGHT = 240.0f;
 	float maxScroll = std::max(0.0f, totalContentHeight - SCREEN_HEIGHT);
 	bool isScrollBtnVisible = (targetScrollY < maxScroll - 10.0f);
 
-	float reactBtnX = isScrollBtnVisible ? (btnX - btnW - 8.0f) : btnX;
+	float startX = btnX;
+	if (isScrollBtnVisible) {
+		startX -= (btnW + 8.0f);
+	}
+	float col1X = startX;
+	float col0X = startX - btnW - 8.0f;
+	float row1Y = 240.0f - btnH - 10.0f;
+	float row0Y = row1Y - btnH - 8.0f;
 
-	drawRoundedRect(reactBtnX, btnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
+	float reactBtnX = col1X, reactBtnY = row1Y;
+	float fileBtnX = col0X, fileBtnY = row1Y;
+	float audioBtnX = col1X, audioBtnY = row0Y;
+	float camBtnX = col0X, camBtnY = row0Y;
 
-	C3D_Tex *tex = UI::ImageManager::getInstance().getLocalImage("romfs:/discord-icons/reaction.png");
-	if (tex) {
+	// Emoji/Reaction Button
+	drawRoundedRect(reactBtnX, reactBtnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
+	C3D_Tex *texReact = UI::ImageManager::getInstance().getLocalImage("romfs:/discord-icons/reaction.png");
+	if (texReact) {
 		float iconSize = 20.0f;
-		Tex3DS_SubTexture subtex = {(u16)tex->width, (u16)tex->height, 0.0f, 1.0f, 1.0f, 0.0f};
-		C2D_Image img = {tex, &subtex};
+		Tex3DS_SubTexture subtex = {(u16)texReact->width, (u16)texReact->height, 0.0f, 1.0f, 1.0f, 0.0f};
+		C2D_Image img = {texReact, &subtex};
 		C2D_ImageTint tint;
 		C2D_PlainImageTint(&tint, ScreenManager::colorText(), 1.0f);
-		C2D_DrawImageAt(img, reactBtnX + (btnW - iconSize) / 2.0f, btnY + (btnH - iconSize) / 2.0f, 0.55f, &tint,
-		                iconSize / tex->width, iconSize / tex->height);
+		C2D_DrawImageAt(img, reactBtnX + (btnW - iconSize) / 2.0f, reactBtnY + (btnH - iconSize) / 2.0f, 0.55f, &tint,
+		                iconSize / texReact->width, iconSize / texReact->height);
 	}
+
+	// File Upload Button
+	drawRoundedRect(fileBtnX, fileBtnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
+	float fw = UI::measureText("\uE074", 0.5f, 0.5f);
+	drawText(fileBtnX + (btnW - fw) / 2.0f, fileBtnY + 5.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE074");
+
+	// Audio Record Button
+	drawRoundedRect(audioBtnX, audioBtnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
+	float aw = UI::measureText("\uE034", 0.5f, 0.5f);
+	drawText(audioBtnX + (btnW - aw) / 2.0f, audioBtnY + 5.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE034");
+
+	// Camera Button
+	drawRoundedRect(camBtnX, camBtnY, 0.54f, btnW, btnH, 8.0f, ScreenManager::colorBackgroundLight());
+	float cw = UI::measureText("\uE070", 0.5f, 0.5f);
+	drawText(camBtnX + (btnW - cw) / 2.0f, camBtnY + 5.0f, 0.55f, 0.5f, 0.5f, ScreenManager::colorText(), "\uE070");
 }
 
 std::unordered_set<std::string> MessageScreen::getVisibleTwemojis() {

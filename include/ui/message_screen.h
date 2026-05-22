@@ -101,7 +101,7 @@ class MessageScreen : public Screen {
 	};
 	KeyboardResult runKeyboard(const std::string &hint, const std::string &initialText = "");
 
-	void renderReactionIcon();
+	void renderBottomButtons();
 };
 
 } // namespace UI

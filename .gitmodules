@@ -1,0 +1,3 @@
+[submodule "3DSware"]
+	path = 3DSware
+	url = https://github.com/MisterY3515/3DSware.git

@@ -10,17 +10,21 @@ namespace UI {
 
 UpdateScreen::UpdateScreen(const std::string& downloadUrl, const std::string& assetName)
     : downloadUrl(downloadUrl), assetName(assetName), currentBytes(0), totalBytes(0), 
-      updateComplete(false), isSuccess(false) {
+      updateComplete(false), isSuccess(false), updateThread(nullptr) {
 	
 	auto& i18n = Core::I18n::getInstance();
 	statusText = Core::I18n::format(i18n.get("updater.downloading"), assetName);
 	
-	updateThread = std::thread(&UpdateScreen::performUpdate, this);
+	updateThread = threadCreate([](void* arg) {
+		UpdateScreen* screen = static_cast<UpdateScreen*>(arg);
+		screen->performUpdate();
+	}, this, 16 * 1024, 0x1A, -2, false);
 }
 
 UpdateScreen::~UpdateScreen() {
-	if (updateThread.joinable()) {
-		updateThread.join();
+	if (updateThread) {
+		threadJoin(updateThread, U64_MAX);
+		threadFree(updateThread);
 	}
 }
 

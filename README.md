@@ -9,6 +9,9 @@
 
 Discord client for Nintendo 3DS.
 
+<img width="225" height="226" alt="image" src="https://github.com/user-attachments/assets/63bb4497-376b-4713-a03d-dc4c4219e541" />
+Download QR for FBI.
+
 This repository is a maintained fork of TriCord (made by 2b-zipper) focused on trying to add some features like the VC (just for the love of the game, I'm not even sure that is possible)
 
 ## Disclaimer
@@ -27,23 +30,23 @@ This software is provided **"as is"**, and you use it at your own risk. The use 
 ![chat](screenshots/4.png)
 
 ## Features
-- QR code and email/password authentication
-- Text messaging with emoji, attachments, embeds, reactions, and replies
-- Multi-account support
-- Server, channel, and forum thread navigation
-- Customizable [themes](THEME_FORMAT.md) and internationalization (EN/JA)
-
-## Custom Themes
-TriCord Revanced supports the original TriCord custom themes. You can create your own theme by following the **[Theme Format Specification](THEME_FORMAT.md)**.
-Check out the [TriCord-Themes](https://github.com/2b-zipper/TriCord-Themes) repository for sample themes.
+- **Authentication**: QR code and Email/Password login. Multi-account support.
+- **Text Chat**: Send and receive messages, emojis, attachments, embeds, reactions, and replies.
+- **Voice Chat**: Join Voice Channels, speak, listen, and manage your microphone (Experimental).
+- **Camera & Photos**: Take photos with the 3DS cameras and send them directly to chats.
+- **Navigation**: Support for servers, channels, direct messages (DMs), and forum threads.
+- **OTA Updates**: Built-in Updater to easily download and install new versions directly from the console.
+- **Customization**: Customizable [themes](THEME_FORMAT.md) and Internationalization (8 languages).
 
 ## Current Status
 
-- Text chat, guild navigation, forums, reactions, embeds, and multi-account support are implemented
-- Theme customization is supported via [THEME_FORMAT.md](THEME_FORMAT.md)
-- Multiple UI languages are included: English, Italian, French, Spanish, German, Japanese, Polish, and Brazilian Portuguese
-- Voice chat support exists in the project, but it is still experimental and may be unstable on real hardware
-- Persistent on-device logs and crash reports are available to help debug runtime failures
+- Text chat, guild navigation, forums, reactions, embeds, and multi-account support are implemented.
+- Voice Chat is integrated and allows speaking and listening in Discord calls.
+- Camera support allows taking live pictures and sending them as attachments.
+- Built-in OTA Updater can install new releases automatically.
+- Theme customization is supported via [THEME_FORMAT.md](THEME_FORMAT.md).
+- Multiple UI languages are included: English, Italian, French, Spanish, German, Japanese, Polish, and Brazilian Portuguese.
+- Persistent on-device logs and crash reports are available to help debug runtime failures.
 
 ## Installation
 
@@ -61,20 +64,21 @@ Never share your Discord token or the local account storage files.
 
 ## Controls
 
-- **Server / channel navigation**: D-Pad to move, `A` to select, `B` to go back, `Y` to enter in VC
+- **Navigation**: D-Pad to move, `A` to select, `B` to go back, `Y` to enter Voice Channels
 - **Message screen**: D-Pad to scroll, `X` for menu actions, `Y` for text input
-- **General UI**: `SELECT` opens the hamburger menu
-- **Voice overlay**: `START` opens the voice screen when already in a call
+- **Camera screen**: `A` to capture and send, `R` to flip front/back camera, `B` to cancel
+- **General UI**: `SELECT` opens the hamburger menu, `L`+`R` toggles debug overlay
+- **Voice actions**: `X` to toggle mute globally, `START` opens the voice screen when in a call, `L`+`B` to quickly leave the call
 
 ## Voice Chat
 
-Voice chat is present but still under active stabilization.
+Voice chat is fully integrated and functional!
+- Join is available from voice channels (Press `Y`).
+- Quick mute toggle using the `X` button.
+- Floating voice overlay allows you to manage the call even when browsing other servers.
+- *Note: It is still experimental and might experience occasional stutters on older 3DS models.*
 
-- Join is available from voice channels
-- Runtime logging around the voice path is more detailed than the rest of the app
-- If the app crashes while joining voice, collect the files in `sdmc:/3ds/TriCord/`
-
-Relevant files:
+If the app crashes while joining voice, collect the files in `sdmc:/3ds/TriCord/`:
 - `session.log`
 - `session-prev.log`
 - `crash_report.txt`

@@ -1070,6 +1070,10 @@ void DiscordClient::handleVoiceStateUpdate(const rapidjson::Value &d) {
 					state.self_video = Utils::Json::getBool(d, "self_video");
 					guild.voiceStates.push_back(state);
 					notifySessionId = guild.voiceStates.back().session_id;
+
+					if (isCurrentUser) {
+						VoiceClient::getInstance().syncMuteState(state.self_mute, state.self_deaf);
+					}
 				}
 
 				Logger::log("[Voice] User %s %s voice channel %s in guild %s", userId.c_str(),
@@ -2039,6 +2043,79 @@ void DiscordClient::postMessage(const std::string &channelId, const std::string 
 	    },
 	    {{"Authorization", token},
 	     {"Content-Type", "application/json"},
+	     {"X-Context-Properties", "eyJsb2NhdGlvbiI6ImNoYXRfaW5wdXQifQ=="}});
+}
+
+void DiscordClient::uploadFile(const std::string &channelId, const std::string &filePath, const std::string &content,
+                               SendMessageCallback cb) {
+	if (token.empty() || channelId.empty() || filePath.empty()) {
+		return;
+	}
+
+	FILE *f = fopen(filePath.c_str(), "rb");
+	if (!f) {
+		Logger::log("Failed to open file for upload: %s", filePath.c_str());
+		if (cb) cb(Message(), false, 0);
+		return;
+	}
+
+	fseek(f, 0, SEEK_END);
+	long fileSize = ftell(f);
+	fseek(f, 0, SEEK_SET);
+
+	std::vector<char> fileBuffer(fileSize);
+	fread(fileBuffer.data(), 1, fileSize, f);
+	fclose(f);
+
+	std::string filename = filePath;
+	size_t slashPos = filename.find_last_of("/\\");
+	if (slashPos != std::string::npos) {
+		filename = filename.substr(slashPos + 1);
+	}
+
+	std::string mimeType = "application/octet-stream";
+	if (filename.find(".jpg") != std::string::npos || filename.find(".jpeg") != std::string::npos) mimeType = "image/jpeg";
+	else if (filename.find(".png") != std::string::npos) mimeType = "image/png";
+	else if (filename.find(".wav") != std::string::npos) mimeType = "audio/wav";
+
+	std::string boundary = "----TriCordFormBoundary1234567890";
+	std::string body;
+
+	// payload_json
+	body += "--" + boundary + "\r\n";
+	body += "Content-Disposition: form-data; name=\"payload_json\"\r\n";
+	body += "Content-Type: application/json\r\n\r\n";
+	
+	rapidjson::StringBuffer s;
+	rapidjson::Writer<rapidjson::StringBuffer> writer(s);
+	writer.StartObject();
+	writer.Key("content");
+	writer.String(content.c_str());
+	writer.EndObject();
+	body += s.GetString();
+	body += "\r\n";
+
+	// file
+	body += "--" + boundary + "\r\n";
+	body += "Content-Disposition: form-data; name=\"files[0]\"; filename=\"" + filename + "\"\r\n";
+	body += "Content-Type: " + mimeType + "\r\n\r\n";
+	body.append(fileBuffer.data(), fileBuffer.size());
+	body += "\r\n--" + boundary + "--\r\n";
+
+	std::string url = "https://discord.com/api/v10/channels/" + channelId + "/messages";
+
+	Network::NetworkManager::getInstance().enqueue(
+	    url, "POST", body, Network::RequestPriority::INTERACTIVE,
+	    [this, cb](const Network::HttpResponse &resp) {
+		    if (!resp.success || resp.statusCode >= 400) {
+			    Logger::log("Failed to upload file: %d (%s)", (int)resp.statusCode, resp.error.c_str());
+			    if (cb) cb(Message(), false, (int)resp.statusCode);
+			    return;
+		    }
+		    if (cb) cb(parseSingleMessage(resp.body), true, (int)resp.statusCode);
+	    },
+	    {{"Authorization", token},
+	     {"Content-Type", "multipart/form-data; boundary=" + boundary},
 	     {"X-Context-Properties", "eyJsb2NhdGlvbiI6ImNoYXRfaW5wdXQifQ=="}});
 }
 

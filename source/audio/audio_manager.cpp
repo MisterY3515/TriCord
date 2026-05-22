@@ -8,6 +8,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+#include "3dsware/mic.h"
+
 namespace Audio {
 
 namespace {
@@ -22,8 +24,7 @@ AudioManager &AudioManager::getInstance() {
 }
 
 AudioManager::AudioManager()
-    : currentPlayBuf(0), micBuffer(nullptr), micBufSize(0), capturing(false), lastMicPos(0), ndspReady(false),
-      micReady(false) {
+    : currentPlayBuf(0), ndspReady(false) {
 	// Size for 120ms of 48kHz mono audio (48000 * 2 * 0.12 = 11520 bytes)
 	playbackBufferSize = 12000;
 	for (int i = 0; i < NUM_WAVE_BUFS; i++) {
@@ -167,24 +168,11 @@ void AudioManager::init() {
 		ndspChnSetInterp(1, NDSP_INTERP_LINEAR);
 		ndspChnSetRate(1, 16000.0f);
 		ndspChnSetFormat(1, NDSP_FORMAT_MONO_PCM16);
-	}
+	} // Close 'else' block
 	
-	// Pre-allocate MIC buffer (linearAlloc required for shared memory)
-	micBufSize = 0x10000; // 64KB
-	micBuffer = (u8 *)linearMemAlign(micBufSize, 0x1000);
-	if (micBuffer) {
-		memset(micBuffer, 0, micBufSize);
-		res = micInit(micBuffer, micBufSize);
-		if (R_FAILED(res)) {
-			Logger::log("[Audio] micInit failed (0x%08lX)", res);
-			linearFree(micBuffer);
-			micBuffer = nullptr;
-			micReady = false;
-		} else {
-			micReady = true;
-		}
-	} else {
-		Logger::log("[Audio] Failed to allocate MIC buffer!");
+	// Inizializza microfono tramite 3DSware
+	if (!Hardware::Mic::getInstance().init()) {
+		Logger::log("[Audio] Hardware::Mic::init failed");
 	}
 }
 
@@ -196,12 +184,7 @@ void AudioManager::shutdown() {
 		ndspExit();
 		ndspReady = false;
 	}
-	if (micBuffer) micExit();
-	if (micBuffer) {
-		linearFree(micBuffer);
-		micBuffer = nullptr;
-	}
-	micReady = false;
+	Hardware::Mic::getInstance().shutdown();
 }
 
 void AudioManager::queuePcm(const int16_t *pcm, size_t samples) {
@@ -221,90 +204,24 @@ void AudioManager::queuePcm(const int16_t *pcm, size_t samples) {
 }
 
 bool AudioManager::startCapture() {
-	if (capturing) return true;
-	if (!micBuffer || !micReady) {
-		Logger::log("[Audio] Cannot start MIC capture: microphone is not initialized");
-		return false;
+	if (Hardware::Mic::getInstance().startStreaming()) {
+		Logger::log("[Audio] Started MIC capture via 3DSware");
+		return true;
 	}
-	
-	// sharedMemAudioSize should be at most bufferSize - 4
-	// Use 32730Hz (max available on 3DS) to get closer to 48kHz requirements
-	u32 audioSize = micBufSize - 4;
-	Result res = MICU_StartSampling(MICU_ENCODING_PCM16_SIGNED, MICU_SAMPLE_RATE_32730, 0, audioSize, true);
-	if (R_FAILED(res)) {
-		Logger::log("[Audio] MICU_StartSampling failed (0x%08lX)", res);
-		capturing = false;
-		return false;
-	}
-	capturing = true;
-	lastMicPos = 0;
-	Logger::log("[Audio] Started MIC capture at 32730Hz");
-	return true;
+	return false;
 }
 
 void AudioManager::stopCapture() {
-	if (!capturing) return;
-	Result res = MICU_StopSampling();
-	if (R_FAILED(res)) {
-		Logger::log("[Audio] MICU_StopSampling failed (0x%08lX)", res);
-	}
-	capturing = false;
-	Logger::log("[Audio] Stopped MIC capture");
+	Hardware::Mic::getInstance().stopStreaming();
+	Logger::log("[Audio] Stopped MIC capture via 3DSware");
 }
 
 bool AudioManager::hasNewSamples() const {
-	if (!capturing || !micBuffer || !micReady) return false;
-	const u32 limit = micBufSize >= 4 ? micBufSize - 4 : 0;
-	if (limit == 0 || lastMicPos >= limit) return false;
-	const u32 currentPos = micGetLastSampleOffset();
-	if (currentPos >= limit) {
-		return false;
-	}
-	return currentPos != lastMicPos;
+	return Hardware::Mic::getInstance().hasNewSamples();
 }
 
 size_t AudioManager::readSamples(int16_t *buffer, size_t maxSamples) {
-	if (!buffer || maxSamples == 0 || !capturing || !micBuffer || !micReady) return 0;
-	
-	u32 limit = micBufSize >= 4 ? micBufSize - 4 : 0;
-	if (limit == 0) return 0;
-	if (lastMicPos >= limit) {
-		Logger::log("[Audio] MIC read position out of range (%lu >= %lu), resetting", (unsigned long)lastMicPos,
-		            (unsigned long)limit);
-		lastMicPos = 0;
-	}
-
-	u32 currentPos = micGetLastSampleOffset();
-	if (currentPos >= limit) {
-		Logger::log("[Audio] MIC sample offset out of range (%lu >= %lu), dropping frame", (unsigned long)currentPos,
-		            (unsigned long)limit);
-		return 0;
-	}
-	if (currentPos == lastMicPos) return 0;
-	
-	u32 bytesAvailable;
-	if (currentPos >= lastMicPos) {
-		bytesAvailable = currentPos - lastMicPos;
-	} else {
-		bytesAvailable = limit - lastMicPos + currentPos;
-	}
-	
-	size_t samplesAvailable = bytesAvailable / 2;
-	if (samplesAvailable > maxSamples) samplesAvailable = maxSamples;
-	
-	// Linear copy considering ring buffer wrap
-	size_t firstPart = limit - lastMicPos;
-	size_t bytesToRead = samplesAvailable * 2;
-	
-	if (bytesToRead <= firstPart) {
-		memcpy(buffer, micBuffer + lastMicPos, bytesToRead);
-	} else {
-		memcpy(buffer, micBuffer + lastMicPos, firstPart);
-		memcpy((u8*)buffer + firstPart, micBuffer, bytesToRead - firstPart);
-	}
-	
-	lastMicPos = (lastMicPos + bytesToRead) % limit;
-	return samplesAvailable;
+	return Hardware::Mic::getInstance().readSamples(buffer, maxSamples);
 }
 
 } // namespace Audio

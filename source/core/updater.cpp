@@ -207,8 +207,13 @@ void Updater::checkForUpdates(bool background) {
 	}
 
 	std::string remoteTag = (*latestRelease)["tag_name"].GetString();
-	// Compare with current version - Assuming 0.0.8 based on AppInfo
-	std::string currentTag = "0.0.8";
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+#ifdef APP_VERSION_PRERELEASE
+	std::string currentTag = TOSTRING(APP_VERSION_MAJOR) "." TOSTRING(APP_VERSION_MINOR) "." TOSTRING(APP_VERSION_MICRO) TOSTRING(APP_VERSION_PRERELEASE);
+#else
+	std::string currentTag = TOSTRING(APP_VERSION_MAJOR) "." TOSTRING(APP_VERSION_MINOR) "." TOSTRING(APP_VERSION_MICRO);
+#endif
 
 	if (isNewerVersion(currentTag, remoteTag)) {
 		// Find correct asset
@@ -254,7 +259,8 @@ void Updater::performUpdate(const std::string& downloadUrl, const std::string& a
 
 extern "C" void triggerManualUpdateCheck() {
 	// Call on a background thread so we don't block the UI while HTTP completes
-	threadCreate([](void*) {
+	Thread updateThread = threadCreate([](void*) {
 		Updater::getInstance().checkForUpdates(false);
 	}, nullptr, 16 * 1024, 0x1A, -2, false);
+	if (updateThread) threadDetach(updateThread);
 }

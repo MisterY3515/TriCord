@@ -85,7 +85,7 @@ VoiceClient::VoiceClient()
       transportNonceCounter(0), muted(false), deafened(false), shuttingDown(false), pendingLeave(false),
       pendingLeaveNotifyGateway(false), heartbeatInterval(0), lastHeartbeatTime(0), lastDiscoveryTime(0),
       lastUdpKeepaliveTime(0), nextTransmitTime(0), discoveryRetries(0), lastVoiceGatewaySequence(0),
-      captureResamplePosition(0.0) {
+      captureResamplePosition(0.0), isSpeakingStatus(false), silenceFramesToSend(0), voiceThread(nullptr) {
 	memset(secretKey, 0, sizeof(secretKey));
 }
 
@@ -101,10 +101,33 @@ void VoiceClient::init() {
 	} else {
 		Logger::log("[Voice] libsodium initialized with 3DS RNG");
 	}
+
+	// Avvia il thread di background per VoiceClient
+	voiceThread = threadCreate(threadMain, this, 16 * 1024, 0x1A, -2, false);
+	if (!voiceThread) {
+		Logger::log("[Voice] Failed to create VoiceClient background thread!");
+	}
+}
+
+void VoiceClient::threadMain(void *arg) {
+	VoiceClient *client = static_cast<VoiceClient *>(arg);
+	while (true) {
+		{
+			std::lock_guard<std::mutex> lock(client->voiceMutex);
+			if (client->shuttingDown) {
+				break;
+			}
+		}
+		
+		client->update();
+		svcSleepThread(5000000); // 5ms sleep to allow UI thread to process gateway events
+	}
 }
 
 bool VoiceClient::initializeCodecsLocked() {
 	if (decoder && encoder) {
+		opus_encoder_ctl(encoder, OPUS_RESET_STATE);
+		opus_decoder_ctl(decoder, OPUS_RESET_STATE);
 		return true;
 	}
 
@@ -169,6 +192,8 @@ void VoiceClient::resetConnectionStateLocked() {
 	decodeBuf.clear();
 	encodeBuf.clear();
 	captureResamplePosition = 0.0;
+	isSpeakingStatus = false;
+	silenceFramesToSend = 0;
 }
 
 void VoiceClient::requestLeaveLocked(bool notifyGateway, const char *reason) {
@@ -244,7 +269,7 @@ void VoiceClient::tryStartVoiceConnectionLocked() {
 	});
 
 	state = State::CONNECTING_WS;
-	std::string wsUrl = "wss://" + voiceEndpoint + "/?v=8";
+	std::string wsUrl = "wss://" + voiceEndpoint + "/?v=4";
 	Logger::log("[Voice] Connecting to Voice WebSocket: %s", wsUrl.c_str());
 	if (!voiceWs.connect(wsUrl)) {
 		Logger::log("[Voice] Failed to connect voice WebSocket");
@@ -298,11 +323,18 @@ void VoiceClient::leaveChannel() {
 }
 
 void VoiceClient::shutdown() {
-	std::lock_guard<std::mutex> lock(voiceMutex);
-	shuttingDown = true;
-	leaveChannelLocked(true);
-	destroyCodecsLocked();
-	shuttingDown = false;
+	{
+		std::lock_guard<std::mutex> lock(voiceMutex);
+		shuttingDown = true;
+		leaveChannelLocked(true);
+		destroyCodecsLocked();
+	}
+	
+	if (voiceThread) {
+		threadJoin(voiceThread, U64_MAX);
+		threadFree(voiceThread);
+		voiceThread = nullptr;
+	}
 	Logger::log("[Voice] Shutdown complete");
 }
 
@@ -358,15 +390,9 @@ void VoiceClient::handleVoiceWsBinaryMessage(std::vector<uint8_t> &msg) {
 		return;
 	}
 
-	Logger::log("[Voice] Received binary Voice WebSocket payload (%u bytes)", (unsigned)msg.size());
-	if (!Config::getInstance().isDaveEnabled()) {
-		Logger::log("[Voice] Voice binary payload requires DAVE/MLS/E2EE support, but DAVE is disabled");
-		requestLeaveLocked(true, "voice binary payload received while DAVE is disabled");
-		return;
-	}
-
-	Logger::log("[Voice] DAVE/MLS/E2EE binary payload received, but MLS/libdave processing is not implemented yet");
-	requestLeaveLocked(true, "voice DAVE payload not implemented");
+	Logger::log("[Voice] Received binary Voice WebSocket payload (%u bytes). Ignoring as DAVE/MLS is not fully supported.", (unsigned)msg.size());
+	// We ignore binary payloads completely instead of leaving the channel.
+	// Discord sends these for DAVE/E2EE negotiation, which is not strictly required for standard UDP audio.
 }
 
 void VoiceClient::handleVoiceWsMessage(std::string &msg) {
@@ -487,7 +513,8 @@ void VoiceClient::handleVoiceWsMessage(std::string &msg) {
 		if (!Audio::AudioManager::getInstance().startCapture()) {
 			Logger::log("[Voice] Voice transport ready, but microphone capture could not be started; continuing in receive-only mode");
 		}
-		sendVoiceSpeaking();
+		isSpeakingStatus = false;
+		silenceFramesToSend = 0;
 		Logger::log("[Voice] Voice transport ready");
 		break;
 	}
@@ -539,14 +566,14 @@ void VoiceClient::sendVoiceIdentify() {
 	Logger::log("[Voice] Sent Identify with voice session_id");
 }
 
-void VoiceClient::sendVoiceSpeaking() {
+void VoiceClient::sendVoiceSpeaking(bool speaking) {
 	rapidjson::Document d;
 	d.SetObject();
 	rapidjson::Document::AllocatorType &alloc = d.GetAllocator();
 	d.AddMember("op", 5, alloc);
 
 	rapidjson::Value data(rapidjson::kObjectType);
-	data.AddMember("speaking", 1, alloc);
+	data.AddMember("speaking", speaking ? 1 : 0, alloc);
 	data.AddMember("delay", 0, alloc);
 	data.AddMember("ssrc", static_cast<uint64_t>(ssrc), alloc);
 	d.AddMember("d", data, alloc);
@@ -656,6 +683,10 @@ void VoiceClient::processOutgoingAudioLocked() {
 	if (muted) {
 		micAccumulator.clear();
 		nextTransmitTime = 0;
+		if (isSpeakingStatus) {
+			isSpeakingStatus = false;
+			sendVoiceSpeaking(false);
+		}
 		return;
 	}
 
@@ -680,24 +711,52 @@ void VoiceClient::processOutgoingAudioLocked() {
 		nextTransmitTime = now;
 	}
 
-	while (micAccumulator.size() >= kDiscordFrameSamples && now + 1 >= nextTransmitTime) {
-		std::vector<int16_t> frame(kDiscordFrameSamples);
-		for (int i = 0; i < kDiscordFrameSamples; i++) {
-			frame[i] = micAccumulator.front();
-			micAccumulator.pop_front();
+	bool sentAny = false;
+	while ((micAccumulator.size() >= kDiscordFrameSamples || silenceFramesToSend > 0) && now + 1 >= nextTransmitTime) {
+		std::vector<uint8_t> opusBuf(1500);
+		size_t encodedLen = 0;
+
+		if (micAccumulator.size() >= kDiscordFrameSamples) {
+			std::vector<int16_t> frame(kDiscordFrameSamples);
+			for (int i = 0; i < kDiscordFrameSamples; i++) {
+				frame[i] = micAccumulator.front();
+				micAccumulator.pop_front();
+			}
+
+			int res = opus_encode(encoder, frame.data(), kDiscordFrameSamples, opusBuf.data(), opusBuf.size());
+			if (res > 0) {
+				encodedLen = static_cast<size_t>(res);
+				silenceFramesToSend = 5;
+			}
+		} else if (silenceFramesToSend > 0) {
+			// Invia frame di silenzio (0xF8 0xFF 0xFE)
+			opusBuf[0] = 0xF8;
+			opusBuf[1] = 0xFF;
+			opusBuf[2] = 0xFE;
+			encodedLen = 3;
+			silenceFramesToSend--;
 		}
 
-		std::vector<uint8_t> opusBuf(1500);
-		const int encodedLen = opus_encode(encoder, frame.data(), kDiscordFrameSamples, opusBuf.data(), opusBuf.size());
-		if (encodedLen <= 0) {
+		if (encodedLen == 0) {
 			continue;
 		}
 
-		encryptAudioPacket(opusBuf.data(), static_cast<size_t>(encodedLen), encodeBuf);
+		if (!isSpeakingStatus) {
+			isSpeakingStatus = true;
+			sendVoiceSpeaking(true);
+		}
+
+		encryptAudioPacket(opusBuf.data(), encodedLen, encodeBuf);
 		if (!encodeBuf.empty()) {
 			udp.send(encodeBuf.data(), encodeBuf.size());
 		}
 		nextTransmitTime += kDiscordFrameDurationMs;
+		sentAny = true;
+	}
+
+	if (!sentAny && silenceFramesToSend == 0 && isSpeakingStatus) {
+		isSpeakingStatus = false;
+		sendVoiceSpeaking(false);
 	}
 }
 
@@ -972,6 +1031,15 @@ void VoiceClient::setDeafened(bool deaf) {
 	if (!channelId.empty()) {
 		DiscordClient::getInstance().sendVoiceStateUpdate(guildId, channelId, muted, deafened);
 	}
+}
+
+void VoiceClient::syncMuteState(bool mute, bool deaf) {
+	std::lock_guard<std::mutex> lock(voiceMutex);
+	if (muted != mute) {
+		muted = mute;
+		Audio::AudioManager::getInstance().playSystemSound(muted ? Audio::SystemSound::MUTE : Audio::SystemSound::UNMUTE);
+	}
+	deafened = deaf;
 }
 
 bool VoiceClient::isMuted() const { return muted; }

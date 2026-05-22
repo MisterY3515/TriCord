@@ -31,9 +31,9 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	TriCord
 BUILD		:=	build
-SOURCES		:=	source source/core source/network source/audio source/discord source/ui source/ui/forum source/utils library/qrcodegen
+SOURCES		:=	source source/core source/network source/audio source/discord source/ui source/ui/forum source/utils library/qrcodegen 3DSware/source
 DATA		:=	data
-INCLUDES	:=	include include/core include/ui library library/stb_image library/qrcodegen
+INCLUDES	:=	include include/core include/ui library library/stb_image library/qrcodegen 3DSware/include
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
 ROMFS		:=	romfs
@@ -219,9 +219,13 @@ APP_UNIQUE_ID     := $(shell echo $(APP_UNIQUE_ID) | cut -c1-7)
 APP_VERSION_MAJOR := $(shell echo $(APP_VERSION_MAJOR) | cut -c1-3)
 APP_VERSION_MINOR := $(shell echo $(APP_VERSION_MINOR) | cut -c1-3)
 APP_VERSION_MICRO := $(shell echo $(APP_VERSION_MICRO) | cut -c1-3)
+APP_VERSION_PRERELEASE := $(shell echo $(APP_VERSION_PRERELEASE) | cut -c1-10)
 APP_ROMFS         := $(TOPDIR)/$(ROMFS)
 
 VERSION_DEFS := -DAPP_VERSION_MAJOR=$(APP_VERSION_MAJOR) -DAPP_VERSION_MINOR=$(APP_VERSION_MINOR) -DAPP_VERSION_MICRO=$(APP_VERSION_MICRO)
+ifneq ($(strip $(APP_VERSION_PRERELEASE)),)
+VERSION_DEFS += -DAPP_VERSION_PRERELEASE="$(APP_VERSION_PRERELEASE)"
+endif
 CFLAGS += $(VERSION_DEFS)
 CXXFLAGS += $(VERSION_DEFS)
 

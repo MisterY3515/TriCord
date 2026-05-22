@@ -42,13 +42,8 @@ class AudioManager {
 	int currentPlayBuf;
 	size_t playbackBufferSize; // in bytes
 
-	// MIC capture ring buffer
-	u8 *micBuffer;
-	u32 micBufSize;
-	bool capturing;
-	u32 lastMicPos;
+	// MIC capture ora delegato a Hardware::Mic in 3DSware
 	bool ndspReady;
-	bool micReady;
 };
 
 } // namespace Audio

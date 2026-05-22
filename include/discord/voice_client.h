@@ -4,6 +4,7 @@
 #include "network/udp_client.h"
 #include "network/websocket_client.h"
 #include <cstdint>
+#include <3ds.h>
 #include <deque>
 #include <map>
 #include <mutex>
@@ -36,6 +37,7 @@ class VoiceClient {
 	// Audio control
 	void setMuted(bool mute);
 	void setDeafened(bool deaf);
+	void syncMuteState(bool mute, bool deaf);
 	bool isMuted() const;
 	bool isDeafened() const;
 
@@ -111,6 +113,11 @@ class VoiceClient {
 	std::vector<uint8_t> encodeBuf;
 	std::vector<int16_t> pcmBuf;
 	double captureResamplePosition;
+	bool isSpeakingStatus;
+	int silenceFramesToSend;
+	
+	Thread voiceThread;
+	static void threadMain(void *arg);
 
 	// Funzioni di supporto
 	void handleVoiceWsMessage(std::string &msg);
@@ -126,7 +133,7 @@ class VoiceClient {
 	void processOutgoingAudioLocked();
 	size_t getRtpHeaderSize(const uint8_t *data, size_t len) const;
 	void sendVoiceIdentify();
-	void sendVoiceSpeaking();
+	void sendVoiceSpeaking(bool speaking);
 	void performIpDiscovery();
 	void sendSelectProtocol(const std::string &ip, int port);
 

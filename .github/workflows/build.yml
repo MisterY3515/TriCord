@@ -2,9 +2,9 @@ name: Build
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, dev ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, dev ]
   workflow_dispatch:
 
 jobs:
@@ -16,7 +16,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
+      - name: Install Dependencies
+        run: |
+          dkp-pacman -Syu --noconfirm 3ds-dev 3ds-curl 3ds-mbedtls 3ds-zlib 3ds-libopus
+
+      - name: Install bannertool and makerom
+        run: |
+          # bannertool
+          curl -sSL https://github.com/carstene1ns/3ds-bannertool/releases/download/1.2.2/bannertool-1.2.2-linux.zip -o /tmp/bannertool.zip
+          unzip -o /tmp/bannertool.zip -d /tmp/bannertool
+          find /tmp/bannertool -name "bannertool" -type f -exec cp {} /usr/local/bin/bannertool \;
+          chmod +x /usr/local/bin/bannertool
+          
+          # makerom
+          curl -sSL https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.19.0/makerom-v0.19.0-ubuntu_x86_64.zip -o /tmp/makerom.zip
+          unzip -o /tmp/makerom.zip -d /tmp/makerom
+          find /tmp/makerom -name "makerom" -type f -exec cp {} /usr/local/bin/makerom \;
+          chmod +x /usr/local/bin/makerom
 
       - name: Build libsodium
         run: |
@@ -24,7 +43,7 @@ jobs:
 
       - name: Build TriCord
         run: |
-          make cia
+          make
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

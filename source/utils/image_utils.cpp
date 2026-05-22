@@ -1,6 +1,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+
 #include "utils/image_utils.h"
 #include <cmath>
 #include <malloc.h>
@@ -126,6 +129,30 @@ C3D_Tex *loadTextureFromMemory(const unsigned char *data, size_t size, int &outW
 C3D_Tex *loadTextureFromMemory(const unsigned char *data, size_t size) {
 	int w, h;
 	return loadTextureFromMemory(data, size, w, h, true);
+}
+
+bool saveJPG(const char *path, const u16 *rgb565, int width, int height) {
+	if (!rgb565 || width <= 0 || height <= 0) return false;
+
+	u8 *rgb888 = (u8 *)malloc(width * height * 3);
+	if (!rgb888) return false;
+
+	for (int i = 0; i < width * height; i++) {
+		u16 px = rgb565[i];
+		u8 r = (px >> 11) & 0x1F;
+		u8 g = (px >> 5) & 0x3F;
+		u8 b = px & 0x1F;
+
+		// Convert to 8-bit
+		rgb888[i * 3 + 0] = (r << 3) | (r >> 2);
+		rgb888[i * 3 + 1] = (g << 2) | (g >> 4);
+		rgb888[i * 3 + 2] = (b << 3) | (b >> 2);
+	}
+
+	int res = stbi_write_jpg(path, width, height, 3, rgb888, 90);
+	free(rgb888);
+
+	return res != 0;
 }
 
 } // namespace Image
