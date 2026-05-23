@@ -81,7 +81,7 @@ VoiceClient &VoiceClient::getInstance() {
 
 VoiceClient::VoiceClient()
     : state(State::DISCONNECTED), selectedEncryptionMode("xsalsa20_poly1305"), hasVoiceServerInfo(false),
-      hasVoiceStateInfo(false), ssrc(0), decoder(nullptr), encoder(nullptr), sequence(0), timestamp(0),
+      hasVoiceStateInfo(false), ssrc(0), encoder(nullptr), sequence(0), timestamp(0),
       transportNonceCounter(0), muted(false), deafened(false), shuttingDown(false), pendingLeave(false),
       pendingLeaveNotifyGateway(false), heartbeatInterval(0), lastHeartbeatTime(0), lastDiscoveryTime(0),
       lastUdpKeepaliveTime(0), nextTransmitTime(0), discoveryRetries(0), lastVoiceGatewaySequence(0),
@@ -125,41 +125,89 @@ void VoiceClient::threadMain(void *arg) {
 }
 
 bool VoiceClient::initializeCodecsLocked() {
-	if (decoder && encoder) {
+	if (encoder) {
 		opus_encoder_ctl(encoder, OPUS_RESET_STATE);
-		opus_decoder_ctl(decoder, OPUS_RESET_STATE);
+		// Reset all per-SSRC decoders
+		for (auto &pair : ssrcDecoders) {
+			if (pair.second.decoder) {
+				opus_decoder_ctl(pair.second.decoder, OPUS_RESET_STATE);
+			}
+		}
 		return true;
 	}
 
-	int decodeErr = OPUS_OK;
 	int encodeErr = OPUS_OK;
-	decoder = opus_decoder_create(kDiscordSampleRate, 1, &decodeErr);
 	encoder = opus_encoder_create(kDiscordSampleRate, 1, OPUS_APPLICATION_VOIP, &encodeErr);
-	if (decodeErr != OPUS_OK || encodeErr != OPUS_OK || !decoder || !encoder) {
-		Logger::log("[Voice] Opus init failed (dec=%d, enc=%d)", decodeErr, encodeErr);
+	if (encodeErr != OPUS_OK || !encoder) {
+		Logger::log("[Voice] Opus encoder init failed (enc=%d)", encodeErr);
 		destroyCodecsLocked();
 		return false;
 	}
 
 	opus_encoder_ctl(encoder, OPUS_SET_BITRATE(64000));
 	opus_encoder_ctl(encoder, OPUS_SET_SIGNAL(OPUS_SIGNAL_VOICE));
-	opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(5));
+	opus_encoder_ctl(encoder, OPUS_SET_COMPLEXITY(1));
 	opus_encoder_ctl(encoder, OPUS_SET_VBR(1));
 	opus_encoder_ctl(encoder, OPUS_SET_PACKET_LOSS_PERC(15));
 	opus_encoder_ctl(encoder, OPUS_SET_INBAND_FEC(1));
 	opus_encoder_ctl(encoder, OPUS_SET_DTX(0));
-	Logger::log("[Voice] Opus and libsodium initialized for 48kHz transport");
+	Logger::log("[Voice] Opus encoder initialized (complexity=1) for 48kHz transport");
 	return true;
 }
 
 void VoiceClient::destroyCodecsLocked() {
-	if (decoder) {
-		opus_decoder_destroy(decoder);
-		decoder = nullptr;
+	for (auto &pair : ssrcDecoders) {
+		if (pair.second.decoder) {
+			opus_decoder_destroy(pair.second.decoder);
+		}
 	}
+	ssrcDecoders.clear();
 	if (encoder) {
 		opus_encoder_destroy(encoder);
 		encoder = nullptr;
+	}
+}
+
+OpusDecoder *VoiceClient::getOrCreateDecoderLocked(uint32_t ssrc) {
+	auto it = ssrcDecoders.find(ssrc);
+	if (it != ssrcDecoders.end() && it->second.decoder) {
+		return it->second.decoder;
+	}
+
+	int err = OPUS_OK;
+	OpusDecoder *dec = opus_decoder_create(kDiscordSampleRate, 1, &err);
+	if (err != OPUS_OK || !dec) {
+		Logger::log("[Voice] Failed to create Opus decoder for SSRC %u (err=%d)", ssrc, err);
+		return nullptr;
+	}
+
+	SsrcState state;
+	state.decoder = dec;
+	state.lastSeq = 0;
+	state.hasReceivedPacket = false;
+	state.lastPacketTime = osGetTime();
+	ssrcDecoders[ssrc] = state;
+	Logger::log("[Voice] Created Opus decoder for SSRC %u (total=%u)", ssrc, (unsigned)ssrcDecoders.size());
+	return dec;
+}
+
+void VoiceClient::cleanupStaleSsrcDecodersLocked(uint64_t now) {
+	// Remove decoders that haven't received audio in 30 seconds
+	std::vector<uint32_t> toRemove;
+	for (auto &pair : ssrcDecoders) {
+		if (now - pair.second.lastPacketTime > 30000) {
+			toRemove.push_back(pair.first);
+		}
+	}
+	for (uint32_t ssrc : toRemove) {
+		auto it = ssrcDecoders.find(ssrc);
+		if (it != ssrcDecoders.end()) {
+			if (it->second.decoder) {
+				opus_decoder_destroy(it->second.decoder);
+			}
+			ssrcDecoders.erase(it);
+			Logger::log("[Voice] Removed stale decoder for SSRC %u", ssrc);
+		}
 	}
 }
 
@@ -194,6 +242,13 @@ void VoiceClient::resetConnectionStateLocked() {
 	captureResamplePosition = 0.0;
 	isSpeakingStatus = false;
 	silenceFramesToSend = 0;
+	// Destroy per-SSRC decoders on connection reset
+	for (auto &pair : ssrcDecoders) {
+		if (pair.second.decoder) {
+			opus_decoder_destroy(pair.second.decoder);
+		}
+	}
+	ssrcDecoders.clear();
 }
 
 void VoiceClient::requestLeaveLocked(bool notifyGateway, const char *reason) {
@@ -657,17 +712,68 @@ void VoiceClient::processIncomingAudioLocked() {
 		pcmBuf.resize(kMaxDecodeFrameSamples);
 	}
 
+	const uint64_t now = osGetTime();
+
+	// Periodically clean up stale SSRC decoders
+	static uint64_t lastCleanup = 0;
+	if (now - lastCleanup > 10000) {
+		lastCleanup = now;
+		cleanupStaleSsrcDecodersLocked(now);
+	}
+
 	while ((len = udp.recv(packet.data(), packet.size(), 0)) > 0) {
+		// Extract SSRC and sequence from RTP header before decryption
+		if (len < (int)kRtpHeaderSize) continue;
+		const uint32_t packetSsrc = extractSsrc(packet.data());
+		const uint16_t packetSeq = extractSequence(packet.data());
+
 		if (!decryptAudioPacket(packet.data(), static_cast<size_t>(len), decodeBuf)) {
 			continue;
 		}
 
-		const int samples = opus_decode(decoder, decodeBuf.data(), static_cast<opus_int32>(decodeBuf.size()),
+		// Get or create per-SSRC decoder
+		OpusDecoder *dec = getOrCreateDecoderLocked(packetSsrc);
+		if (!dec) continue;
+
+		SsrcState &ss = ssrcDecoders[packetSsrc];
+		ss.lastPacketTime = now;
+
+		// PLC: if there's a gap in the sequence, ask Opus to interpolate missing frames
+		if (ss.hasReceivedPacket) {
+			int gap = (int)(uint16_t)(packetSeq - ss.lastSeq - 1);
+			if (gap > 0 && gap <= 5) {
+				// Generate up to 5 PLC frames to cover the gap
+				for (int i = 0; i < gap; i++) {
+					int plcSamples = opus_decode(dec, nullptr, 0, pcmBuf.data(), kDiscordFrameSamples, 0);
+					if (plcSamples > 0) {
+						Audio::AudioManager::getInstance().queuePcm(pcmBuf.data(), static_cast<size_t>(plcSamples));
+					}
+				}
+			}
+		}
+
+		ss.lastSeq = packetSeq;
+		ss.hasReceivedPacket = true;
+
+		// Decode the actual packet
+		const int samples = opus_decode(dec, decodeBuf.data(), static_cast<opus_int32>(decodeBuf.size()),
 		                                pcmBuf.data(), kMaxDecodeFrameSamples, 0);
 		if (samples > 0) {
 			Audio::AudioManager::getInstance().queuePcm(pcmBuf.data(), static_cast<size_t>(samples));
 		}
 	}
+}
+
+uint32_t VoiceClient::extractSsrc(const uint8_t *rtpHeader) const {
+	return (static_cast<uint32_t>(rtpHeader[8]) << 24) |
+	       (static_cast<uint32_t>(rtpHeader[9]) << 16) |
+	       (static_cast<uint32_t>(rtpHeader[10]) << 8) |
+	       static_cast<uint32_t>(rtpHeader[11]);
+}
+
+uint16_t VoiceClient::extractSequence(const uint8_t *rtpHeader) const {
+	return (static_cast<uint16_t>(rtpHeader[2]) << 8) |
+	       static_cast<uint16_t>(rtpHeader[3]);
 }
 
 void VoiceClient::processOutgoingAudioLocked() {

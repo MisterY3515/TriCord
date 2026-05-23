@@ -84,8 +84,14 @@ class VoiceClient {
 	// Encryption
 	uint8_t secretKey[32];
 
-	// Opus
-	OpusDecoder *decoder;
+	// Opus - per-SSRC decoders for multi-user support
+	struct SsrcState {
+		OpusDecoder *decoder = nullptr;
+		uint16_t lastSeq = 0;
+		bool hasReceivedPacket = false;
+		uint64_t lastPacketTime = 0;
+	};
+	std::map<uint32_t, SsrcState> ssrcDecoders;
 	OpusEncoder *encoder;
 
 	// RTP
@@ -128,10 +134,14 @@ class VoiceClient {
 	void resetConnectionStateLocked();
 	bool initializeCodecsLocked();
 	void destroyCodecsLocked();
+	void cleanupStaleSsrcDecodersLocked(uint64_t now);
+	OpusDecoder *getOrCreateDecoderLocked(uint32_t ssrc);
 	void resampleCaptureToDiscordRateLocked();
 	void processIncomingAudioLocked();
 	void processOutgoingAudioLocked();
 	size_t getRtpHeaderSize(const uint8_t *data, size_t len) const;
+	uint32_t extractSsrc(const uint8_t *rtpHeader) const;
+	uint16_t extractSequence(const uint8_t *rtpHeader) const;
 	void sendVoiceIdentify();
 	void sendVoiceSpeaking(bool speaking);
 	void performIpDiscovery();
