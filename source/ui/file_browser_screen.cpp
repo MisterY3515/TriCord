@@ -34,7 +34,9 @@ void FileBrowserScreen::loadDirectory(const std::string &path) {
 			std::string name = ent->d_name;
 			if (name == "." || name == "..") continue;
 
-			std::string fullPath = path + "/" + name;
+			std::string fullPath = path;
+			if (fullPath.back() != '/') fullPath += '/';
+			fullPath += name;
 			struct stat st;
 			bool isDir = false;
 			size_t size = 0;
