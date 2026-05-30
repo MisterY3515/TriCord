@@ -191,17 +191,43 @@ void AudioManager::shutdown() {
 
 void AudioManager::queuePcm(const int16_t *pcm, size_t samples) {
 	if (!pcm || samples == 0 || !ndspReady) return;
-	if (!playbackBuffer[currentPlayBuf]) return;
 	
-	size_t bytesToCopy = samples * 2;
-	if (bytesToCopy > playbackBufferSize) bytesToCopy = playbackBufferSize;
+	std::lock_guard<std::mutex> lock(jitterMutex);
+	jitterBuffer.insert(jitterBuffer.end(), pcm, pcm + samples);
+	
+	if (jitterBuffer.size() > 48000 * 2) { 
+		size_t toRemove = jitterBuffer.size() - 48000 * 2;
+		jitterBuffer.erase(jitterBuffer.begin(), jitterBuffer.begin() + toRemove);
+	}
+}
 
-	if (waveBuf[currentPlayBuf].status == NDSP_WBUF_DONE) {
-		memcpy(playbackBuffer[currentPlayBuf], pcm, bytesToCopy);
-		waveBuf[currentPlayBuf].nsamples = bytesToCopy / 2;
-		DSP_FlushDataCache(playbackBuffer[currentPlayBuf], bytesToCopy);
-		ndspChnWaveBufAdd(0, &waveBuf[currentPlayBuf]);
-		currentPlayBuf = (currentPlayBuf + 1) % NUM_WAVE_BUFS;
+void AudioManager::update() {
+	if (!ndspReady) return;
+
+	std::lock_guard<std::mutex> lock(jitterMutex);
+	size_t minSamplesRequired = playingJitter ? 960 : 4800;
+	
+	if (jitterBuffer.size() >= minSamplesRequired) {
+		playingJitter = true;
+		
+		while (jitterBuffer.size() >= 960) {
+			if (!playbackBuffer[currentPlayBuf]) break;
+			
+			if (waveBuf[currentPlayBuf].status == NDSP_WBUF_DONE) {
+				size_t bytesToCopy = 960 * sizeof(int16_t);
+				memcpy(playbackBuffer[currentPlayBuf], jitterBuffer.data(), bytesToCopy);
+				waveBuf[currentPlayBuf].nsamples = 960;
+				DSP_FlushDataCache(playbackBuffer[currentPlayBuf], bytesToCopy);
+				ndspChnWaveBufAdd(0, &waveBuf[currentPlayBuf]);
+				currentPlayBuf = (currentPlayBuf + 1) % NUM_WAVE_BUFS;
+				
+				jitterBuffer.erase(jitterBuffer.begin(), jitterBuffer.begin() + 960);
+			} else {
+				break;
+			}
+		}
+	} else if (jitterBuffer.empty()) {
+		playingJitter = false;
 	}
 }
 
